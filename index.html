@@ -1232,7 +1232,7 @@ Clientes actuales: ${clientSummary}`,
   document.getElementById('sendBtn').disabled=false;
 }
 
-async function processAction({action,client,amount,note,desc,message}){
+async function processAction({action,client,amount,currency,note,desc,message}){
   function findClient(name){
     return clientsCache.find(x=>x.name.toLowerCase()===name.toLowerCase());
   }
