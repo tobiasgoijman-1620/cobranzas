@@ -900,13 +900,10 @@ function renderClientList(){
   const html = clientsCache.length ? clientsCache.map(c=>`
     <div class="client-row${selectedClientId===c.id?' active':''}" onclick="openClient('${c.id}')">
       <div class="cr-name">${c.name}</div>
-      <div style="margin-top:3px;display:flex;flex-direction:column;gap:1px;">
-        ${c.balance>0?
-          `<div style="font-size:10px;color:var(--green);font-family:var(--mono);">Te debe</div>`:
-          c.balance<0?
-          `<div style="font-size:10px;color:var(--red);font-family:var(--mono);">Le debés</div>`:
-          `<div style="font-size:10px;color:var(--text3);">Al día ✓</div>`
-        }
+      <div style="margin-top:3px;">
+        <div style="font-size:10px;color:var(--text2);font-family:var(--mono);">
+          ${c.balance>0?'Te debe':c.balance<0?'Le debés':'Al día ✓'}
+        </div>
       </div>
     </div>`).join('') : '<div class="no-clients">Aún no hay clientes.</div>';
   if(el) el.innerHTML=html;
@@ -950,12 +947,11 @@ async function openClient(id){
 
   const currencyCards = Object.entries(currencies).map(([cur,data])=>{
     const b = data.balance;
-    const color = b>0?'var(--green)':b<0?'var(--red)':'var(--text3)';
-    const label = b>0?`${c.name} te debe`:b<0?`Le debés a ${c.name}`:'Al día';
+    const label = b>0?`${c.name} te debe`:b<0?`Le debés a ${c.name}`:'Al día ✓';
     const sign = b>0?'+':b<0?'-':'';
     return `<div style="background:var(--bg);border-radius:8px;padding:12px 10px;text-align:center;border:1px solid var(--border);min-width:0;overflow:hidden;">
       <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;">${cur}</div>
-      <div style="font-size:20px;font-weight:700;color:${color};word-break:break-all;">${sign}${fmt(Math.abs(b))}</div>
+      <div style="font-size:${Math.abs(b)>=100000?'14px':Math.abs(b)>=10000?'16px':'20px'};font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${sign}${fmt(Math.abs(b))}</div>
       <div style="font-size:10px;color:var(--text2);margin-top:4px;">${label}</div>
     </div>`;
   }).join('');
@@ -988,12 +984,8 @@ async function openClient(id){
               <div class="tx-date">${fmtDate(m.created_at)}</div>
             </div>
             <div style="display:flex;align-items:center;gap:6px;">
-              <div class="tx-amt ${
-                (m.type==='deuda_cliente'||m.type==='deuda'||m.type==='pago_yo')?'amt-pos':'amt-neg'
-              }" id="amt-${m.id}">
-                ${(m.type==='deuda_cliente'||m.type==='deuda')?'+':
-                  m.type==='deuda_yo'?'-':
-                  m.type==='pago_cliente'||m.type==='pago'?'+':'-'}${fmt(Number(m.amount))} ${m.currency||'USD'}
+              <div style="font-size:13px;font-weight:500;font-family:var(--mono);white-space:nowrap;margin-left:12px;color:var(--text);" id="amt-${m.id}">
+                ${fmt(Number(m.amount))} ${m.currency||'USD'}
               </div>
               <button class="btn" style="padding:3px 7px;font-size:11px;" onclick="editMovement('${m.id}','${m.type}',${m.amount},'${id}')">✏️</button>
               <button class="btn" style="padding:3px 7px;font-size:11px;color:var(--red);" onclick="deleteMovement('${m.id}','${m.type}',${m.amount},'${id}')">✕</button>
@@ -1340,28 +1332,43 @@ async function downloadHistory(){
   const H = doc.internal.pageSize.getHeight();
   const dateStr = new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
 
-  // Header background
-  doc.setFillColor(15,15,15);
-  doc.rect(0,0,W,38,'F');
+  // Header - professional dark gradient look
+  doc.setFillColor(10,10,10);
+  doc.rect(0,0,W,42,'F');
+  
+  // Accent line
+  doc.setFillColor(200,245,90);
+  doc.rect(0,42,W,1.5,'F');
 
-  // Logo area - dark circle
-  doc.setFillColor(30,30,30);
-  doc.circle(20,19,12,'F');
+  // Left side - logo circle
+  doc.setFillColor(25,25,25);
+  doc.circle(22,21,13,'F');
+  doc.setDrawColor(200,245,90);
+  doc.setLineWidth(0.8);
+  doc.circle(22,21,13,'S');
   doc.setTextColor(200,245,90);
-  doc.setFontSize(14);
+  doc.setFontSize(16);
   doc.setFont('helvetica','bold');
-  doc.text('$',20,22,{align:'center'});
+  doc.text('$',22,25,{align:'center'});
 
-  // Title
-  doc.setTextColor(240,237,232);
-  doc.setFontSize(18);
+  // Title block
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(20);
   doc.setFont('helvetica','bold');
-  doc.text('Cuenta Corriente',36,16);
-  doc.setFontSize(11);
+  doc.text('Cuenta Corriente',40,15);
+  
+  doc.setFontSize(10);
   doc.setFont('helvetica','normal');
   doc.setTextColor(180,180,180);
-  doc.text(`Cliente: ${c.name}`,36,24);
-  doc.text(`Emitido: ${dateStr}`,36,31);
+  doc.text(`Cliente:`,40,24);
+  doc.setTextColor(240,237,232);
+  doc.setFont('helvetica','bold');
+  doc.text(c.name,58,24);
+  
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(130,130,130);
+  doc.setFontSize(9);
+  doc.text(`Emitido el ${dateStr}`,40,32);
 
   // Saldo badge — desde la perspectiva del cliente que recibe el PDF
   // balance > 0: el CLIENTE le debe al usuario → el cliente VE que debe plata → rojo
@@ -1406,34 +1413,40 @@ async function downloadHistory(){
   doc.line(10,y+2,W-10,y+2);
 
   const rows = [...movs].reverse().map(m=>{
-    // Desde perspectiva del cliente que recibe el PDF:
+      // Desde perspectiva del cliente que recibe el PDF:
     const tipo = m.type==='deuda_cliente'?'Debés':
                  m.type==='deuda_yo'?'Te deben':
                  m.type==='pago_cliente'?'Pagaste':
                  m.type==='pago_yo'?'Te pagaron':
                  m.type==='deuda'?'Debés':'Pagaste';
+    const cur = m.currency||'USD';
     const signo = (m.type==='deuda_cliente'||m.type==='deuda'||m.type==='pago_yo')?'-':'+';
-    return [fmtDate(m.created_at), tipo, m.note||'-', signo+'$'+fmt(Number(m.amount))];
+    const montoFmt = signo+fmt(Number(m.amount))+' '+cur;
+    return [fmtDate(m.created_at), tipo, cur, m.note||'-', montoFmt];
   });
 
   doc.autoTable({
     startY: y+5,
-    head: [['Fecha','Tipo','Descripción','Monto']],
+    head: [['Fecha','Tipo','Moneda','Descripción','Monto']],
     body: rows,
     theme:'grid',
     headStyles:{fillColor:[24,24,24],textColor:[200,245,90],fontStyle:'bold',fontSize:8},
     bodyStyles:{fontSize:8,textColor:[60,60,60]},
     alternateRowStyles:{fillColor:[248,248,248]},
     columnStyles:{
-      0:{cellWidth:38},
-      1:{cellWidth:18},
-      2:{cellWidth:'auto'},
-      3:{cellWidth:30,halign:'right',fontStyle:'bold'}
+      0:{cellWidth:35},
+      1:{cellWidth:20},
+      2:{cellWidth:18},
+      3:{cellWidth:'auto'},
+      4:{cellWidth:32,halign:'right',fontStyle:'bold'}
     },
     didParseCell:(data)=>{
-      if(data.column.index===3&&data.section==='body'){
-        // rojo = cliente debe (negativo para él), verde = le deben al cliente (positivo para él)
+      if(data.column.index===4&&data.section==='body'){
         data.cell.styles.textColor = data.cell.raw.startsWith('-')?[220,60,60]:[60,180,100];
+      }
+      if(data.column.index===2&&data.section==='body'){
+        data.cell.styles.textColor = [150,150,150];
+        data.cell.styles.fontSize = 7;
       }
     }
   });
