@@ -408,7 +408,8 @@ input:focus{border-color:var(--accent);}
         </div>
         <button class="btn btn-accent" onclick="showAddClientDialog()">+ Nuevo</button>
       </div>
-      <div style="flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:6px;" id="clientesMobileList">
+      <div style="padding:10px 16px 0;" id="clientesTotalSummary"></div>
+      <div style="flex:1;overflow-y:auto;padding:8px 16px;display:flex;flex-direction:column;gap:6px;" id="clientesMobileList">
         <div class="no-clients" style="padding:40px 0;text-align:center;color:var(--text3);">Aún no hay clientes.<br>Tocá + Nuevo para agregar.</div>
       </div>
     </div>
@@ -837,9 +838,9 @@ async function upsertClient(name){
   return data;
 }
 
-async function addMovement(clientId,type,amount,note){
+async function addMovement(clientId,type,amount,note,currency='USD'){
   if(!sbClient||!currentUser) return;
-  await sbClient.from('movements').insert({user_id:currentUser.id,client_id:clientId,type,amount,note});
+  await sbClient.from('movements').insert({user_id:currentUser.id,client_id:clientId,type,amount,note,currency});
 }
 
 async function updateClientBalance(clientId,newBalance){
@@ -864,13 +865,42 @@ async function getClientMovements(clientId){
 
 // ─── RENDER ───────────────────────────────────────────────────────────
 function renderClientList(){
+  // Calculate totals per currency across all clients
+  // balance > 0 means client owes you, balance < 0 means you owe client
+  // But since we now track per-currency, we need to load movements... 
+  // For now use a simple summary from clientsCache balance field
+  const totalTeDebenClients = clientsCache.filter(c=>c.balance>0);
+  const totalLeDebésClients = clientsCache.filter(c=>c.balance<0);
+
+  const summaryHTML = clientsCache.length ? `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:4px;font-size:11px;">
+      <div style="color:var(--text3);font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Resumen general</div>
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;background:var(--green-dim);border-radius:6px;padding:6px;text-align:center;">
+          <div style="color:var(--text3);font-size:9px;">Te deben</div>
+          <div style="color:var(--green);font-weight:600;">${totalTeDebenClients.length} cliente${totalTeDebenClients.length!==1?'s':''}</div>
+        </div>
+        <div style="flex:1;background:var(--red-dim);border-radius:6px;padding:6px;text-align:center;">
+          <div style="color:var(--text3);font-size:9px;">Les debés</div>
+          <div style="color:var(--red);font-weight:600;">${totalLeDebésClients.length} cliente${totalLeDebésClients.length!==1?'s':''}</div>
+        </div>
+        <div style="flex:1;background:var(--surface2);border-radius:6px;padding:6px;text-align:center;">
+          <div style="color:var(--text3);font-size:9px;">Al día</div>
+          <div style="color:var(--text2);font-weight:600;">${clientsCache.filter(c=>c.balance===0).length}</div>
+        </div>
+      </div>
+    </div>` : '';
+
+  const summaryEl = document.getElementById('clientesTotalSummary');
+  if(summaryEl) summaryEl.innerHTML = summaryHTML;
+
   const el=document.getElementById('clientList');
   const elM=document.getElementById('clientesMobileList');
   const html = clientsCache.length ? clientsCache.map(c=>`
     <div class="client-row${selectedClientId===c.id?' active':''}" onclick="openClient('${c.id}')">
       <div class="cr-name">${c.name}</div>
       <div class="cr-bal ${c.balance>0?'bal-ok':c.balance<0?'bal-debt':'bal-zero'}">
-        ${c.balance>0?'Te debe $'+fmt(c.balance):c.balance<0?'Le debés $'+fmt(Math.abs(c.balance)):'Al día ✓'}
+        ${c.balance>0?'Te debe':'Le debés'}${c.balance===0?' Al día ✓':''}
       </div>
     </div>`).join('') : '<div class="no-clients">Aún no hay clientes.</div>';
   if(el) el.innerHTML=html;
@@ -885,7 +915,7 @@ async function openClient(id){
   const c=clientsCache.find(x=>x.id===id);
   if(!c) return;
   document.getElementById('clientPanelName').textContent=c.name;
-  document.getElementById('clientPanelSub').textContent=c.balance>0?`Te debe $${fmt(c.balance)}`:c.balance<0?`Le debés $${fmt(Math.abs(c.balance))}`:'Al día';
+  document.getElementById('clientPanelSub').textContent=c.balance>0?'Te debe (ver saldos por moneda)':c.balance<0?'Le debés (ver saldos por moneda)':'Al día ✓';
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-cliente').classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
@@ -898,14 +928,36 @@ async function openClient(id){
   const elMeDebeATi = bal > 0 ? bal : 0;
   const yoLeDeboCli = bal < 0 ? Math.abs(bal) : 0;
 
+  // Agrupar movimientos por moneda
+  const currencies = {};
+  movs.forEach(m=>{
+    const cur = m.currency||'USD';
+    if(!currencies[cur]) currencies[cur]={balance:0};
+    const amt = Number(m.amount);
+    if(m.type==='deuda_cliente'||m.type==='deuda') currencies[cur].balance+=amt;
+    else if(m.type==='deuda_yo') currencies[cur].balance-=amt;
+    else if(m.type==='pago_cliente'||m.type==='pago') currencies[cur].balance-=amt;
+    else if(m.type==='pago_yo') currencies[cur].balance+=amt;
+  });
+
+  const curSymbol = cur => cur==='ARS'?'$ARS':cur==='USDT'?'USDT':cur==='EUR'?'€':cur==='BRL'?'R$':'USD';
+
+  const currencyCards = Object.entries(currencies).map(([cur,data])=>{
+    const b = data.balance;
+    const color = b>0?'var(--red)':b<0?'var(--green)':'var(--text3)';
+    const label = b>0?`${c.name} te debe`:b<0?`Vos le debés a ${c.name}`:'Al día';
+    return `<div style="background:var(--bg);border-radius:8px;padding:14px;text-align:center;border:1px solid var(--border);">
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">${curSymbol(cur)}</div>
+      <div style="font-size:28px;font-weight:700;color:${color};">${b>0?'+':b<0?'-':''}${fmt(Math.abs(b))}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px;">${label}</div>
+    </div>`;
+  }).join('');
+
   document.getElementById('clientContent').innerHTML=`
-    <div class="card" style="text-align:center;padding:24px 16px;">
-      <div style="font-size:11px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;">Saldo actual</div>
-      <div style="font-size:42px;font-weight:700;letter-spacing:-.02em;color:${bal>0?'var(--red)':bal<0?'var(--green)':'var(--text3)'};">
-        ${bal>0?'+':''}$${fmt(Math.abs(bal))}
-      </div>
-      <div style="font-size:12px;margin-top:8px;color:var(--text2);">
-        ${bal>0?c.name+' te debe esta plata':bal<0?'Vos le debés esta plata a '+c.name:'Están al día ✓'}
+    <div class="card">
+      <div class="card-title">Saldos por moneda</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">
+        ${currencyCards||'<div style="color:var(--text3);font-size:12px;">Sin movimientos</div>'}
       </div>
     </div>
     <div class="card">
@@ -923,13 +975,14 @@ async function openClient(id){
                 m.type==='pago_cliente'?'💰 Te pagó':
                 m.type==='pago_yo'?'💰 Le pagaste vos':
                 m.type==='deuda'?'📋 Deuda':'💰 Pago'
-              }</div>
+              } <span style="font-size:10px;background:var(--bg);padding:1px 6px;border-radius:10px;font-family:var(--mono);color:var(--text3);">${m.currency||'USD'}</span></div>
+              ${m.note?`<div style="font-size:11px;color:var(--accent);margin-top:2px;font-style:italic;">📌 ${m.note}</div>`:''}
               ${m.note?`<div class="tx-note">${m.note}</div>`:''}
               <div class="tx-date">${fmtDate(m.created_at)}</div>
             </div>
             <div style="display:flex;align-items:center;gap:6px;">
-              <div class="tx-amt ${(m.type==='deuda_cliente'||m.type==='deuda')?'amt-neg':(m.type==='deuda_yo')?'amt-pos':''}${(m.type==='pago_cliente'||m.type==='pago')?'amt-pos':(m.type==='pago_yo')?'amt-neg':''}" id="amt-${m.id}">
-                ${(m.type==='deuda_cliente'||m.type==='deuda')?'- te deben':m.type==='deuda_yo'?'- les debés':''}${(m.type==='pago_cliente'||m.type==='pago')?'+ cobraste':m.type==='pago_yo'?'- pagaste':''} $${fmt(Number(m.amount))}
+              <div class="tx-amt ${(m.type==='deuda_cliente'||m.type==='deuda'||m.type==='pago_cliente'||m.type==='pago')?'amt-neg':'amt-pos'}" id="amt-${m.id}">
+                ${(m.type==='deuda_cliente'||m.type==='deuda')?'+':m.type==='deuda_yo'?'-':m.type==='pago_cliente'||m.type==='pago'?'-':'+'}${fmt(Number(m.amount))} ${m.currency||'USD'}
               </div>
               <button class="btn" style="padding:3px 7px;font-size:11px;" onclick="editMovement('${m.id}','${m.type}',${m.amount},'${id}')">✏️</button>
               <button class="btn" style="padding:3px 7px;font-size:11px;color:var(--red);" onclick="deleteMovement('${m.id}','${m.type}',${m.amount},'${id}')">✕</button>
@@ -938,15 +991,26 @@ async function openClient(id){
     </div>`;
 }
 
+// Recalcula el balance desde cero sumando todos los movimientos restantes
+async function recalcBalance(clientId){
+  const movs = await getClientMovements(clientId);
+  let bal = 0;
+  movs.forEach(m=>{
+    const amt = Number(m.amount);
+    if(m.type==='deuda_cliente'||m.type==='deuda') bal += amt;
+    else if(m.type==='deuda_yo') bal -= amt;
+    else if(m.type==='pago_cliente'||m.type==='pago') bal -= amt;
+    else if(m.type==='pago_yo') bal += amt;
+  });
+  await updateClientBalance(clientId, bal);
+  return bal;
+}
+
 async function deleteMovement(movId,type,amount,clientId){
   if(!confirm('¿Borrar este movimiento?')) return;
   if(!sbClient||!currentUser) return;
   await sbClient.from('movements').delete().eq('id',movId);
-  const c=clientsCache.find(x=>x.id===clientId);
-  if(c){
-    const delta=type==='deuda'?-Number(amount):Number(amount);
-    await updateClientBalance(clientId,Number(c.balance)+delta);
-  }
+  await recalcBalance(clientId);
   await openClient(clientId);
 }
 
@@ -957,12 +1021,7 @@ async function editMovement(movId,type,oldAmount,clientId){
   if(isNaN(newAmt)||newAmt<=0){window.alert('Monto inválido');return;}
   if(!sbClient||!currentUser) return;
   await sbClient.from('movements').update({amount:newAmt}).eq('id',movId);
-  const c=clientsCache.find(x=>x.id===clientId);
-  if(c){
-    const diff=newAmt-Number(oldAmount);
-    const delta=type==='deuda'?diff:-diff;
-    await updateClientBalance(clientId,Number(c.balance)+delta);
-  }
+  await recalcBalance(clientId);
   await openClient(clientId);
 }
 
@@ -1126,35 +1185,34 @@ async function sendChat(){
       },
       body:JSON.stringify({
         model:'claude-opus-4-5',max_tokens:600,
-        system:`Sos un asistente de cobranzas. La app registra deudas en DOS direcciones: a veces el cliente le debe al usuario, a veces el usuario le debe al cliente.
+        system:`Sos un asistente de cobranzas. La app registra deudas en DOS direcciones y múltiples monedas.
 
 Respondé SOLO con JSON sin markdown:
-{"action":"deuda_cliente"|"deuda_yo"|"pago_cliente"|"pago_yo"|"ganancia"|"ver_cliente"|"chat","client":"nombre","amount":número,"note":"desc corta","desc":"desc ganancia","message":"respuesta informal max 2 líneas"}
+{"action":"deuda_cliente"|"deuda_yo"|"pago_cliente"|"pago_yo"|"ganancia"|"ver_cliente"|"chat","client":"nombre","amount":número,"currency":"USD"|"ARS"|"USDT"|"EUR"|"BRL"|"otra","note":"desc corta o recordatorio","desc":"desc ganancia","message":"respuesta informal max 2 líneas"}
+
+MONEDAS — detectá automáticamente:
+- "usd", "dolar", "dólares" → USD
+- "pesos", "ars", "$" sin especificar → ARS  
+- "usdt", "tether" → USDT
+- "euro", "eur" → EUR
+- "real", "brl" → BRL
+- Si no se especifica → USD por defecto
 
 ACCIONES:
-- "deuda_cliente" = el CLIENTE le debe dinero AL USUARIO
-- "deuda_yo" = el USUARIO le debe dinero AL CLIENTE
-- "pago_cliente" = el cliente pagó una deuda que tenía con el usuario
-- "pago_yo" = el usuario pagó una deuda que tenía con el cliente
+- "deuda_cliente" = el CLIENTE le debe al USUARIO
+- "deuda_yo" = el USUARIO le debe al CLIENTE
+- "pago_cliente" = el cliente pagó al usuario
+- "pago_yo" = el usuario pagó al cliente
 
-EJEMPLOS de deuda_cliente (el cliente debe al usuario):
-- "Gero me debe 109" → deuda_cliente
-- "Gero debe 109" → deuda_cliente
-- "agregar 109 a Gero" → deuda_cliente
-- "cargar deuda de 109 a Gero" → deuda_cliente
+NOTA: Si el usuario agrega texto descriptivo como "por cambio", "saldo invexa", "operación X" → ponerlo en "note"
 
-EJEMPLOS de deuda_yo (el usuario debe al cliente):
-- "le debo a Gero 109" → deuda_yo
-- "yo le debo 109 a Gero" → deuda_yo
-- "debo 109 a Gero" → deuda_yo
-
-EJEMPLOS de pagos:
-- "Gero me pagó 50" / "cobré 50 de Gero" → pago_cliente
-- "le pagué 50 a Gero" / "pagué 50 a Gero" → pago_yo
-
-Otros:
-- "ver cuenta de Ramiro" → ver_cliente
-- "ganancia operacion Ricardo 35 usd" → ganancia, amount:35, desc:"Operación Ricardo"
+EJEMPLOS:
+- "rama me debe 1000 usd por operacion de cambio" → deuda_cliente, client:rama, amount:1000, currency:USD, note:"operación de cambio"
+- "rama me debe 200000 pesos por saldo invexa" → deuda_cliente, client:rama, amount:200000, currency:ARS, note:"saldo invexa"
+- "le debo 500 usdt a gero" → deuda_yo, client:gero, amount:500, currency:USDT
+- "rama me pagó 300 usd" → pago_cliente, client:rama, amount:300, currency:USD
+- "ganancia operacion Ricardo 35 usd" → ganancia, amount:35, currency:USD, desc:"Operación Ricardo"
+- "ver cuenta de rama" → ver_cliente, client:rama
 
 Clientes actuales: ${clientSummary}`,
         messages:[{role:'user',content:text}]
@@ -1175,50 +1233,51 @@ Clientes actuales: ${clientSummary}`,
 }
 
 async function processAction({action,client,amount,note,desc,message}){
-  // Helper para validar cliente
   function findClient(name){
     return clientsCache.find(x=>x.name.toLowerCase()===name.toLowerCase());
   }
+  const cur = currency||'USD';
+  const curSym = cur==='ARS'?'$ARS ':cur==='USDT'?'USDT ':cur==='EUR'?'€':cur==='BRL'?'R$':'$';
 
   if((action==='deuda_cliente'||action==='deuda')&&client&&amount){
     try{
       const c=findClient(client);
       if(!c){appendMsg(`⚠️ No encontré a "${client}". Agregalo primero desde la solapa Clientes.`,'ai');return;}
       const newBal=Number(c.balance)+Number(amount);
-      await addMovement(c.id,'deuda_cliente',amount,note||'');
+      await addMovement(c.id,'deuda_cliente',amount,note||'',cur);
       await updateClientBalance(c.id,newBal);
       renderClientList();
-      appendMsg(message||`✅ ${client} te debe $${fmt(amount)}. Saldo total: $${fmt(newBal)}.`,'ai');
+      appendMsg(message||`✅ ${client} te debe ${curSym}${fmt(amount)} [${cur}]${note?' — '+note:''}.`,'ai');
     }catch(e){appendMsg('Error: '+e.message,'ai');}
   } else if(action==='deuda_yo'&&client&&amount){
     try{
       const c=findClient(client);
       if(!c){appendMsg(`⚠️ No encontré a "${client}". Agregalo primero desde la solapa Clientes.`,'ai');return;}
-      const newBal=Number(c.balance)-Number(amount); // vos debés más → balance baja
-      await addMovement(c.id,'deuda_yo',amount,note||'');
+      const newBal=Number(c.balance)-Number(amount);
+      await addMovement(c.id,'deuda_yo',amount,note||'',cur);
       await updateClientBalance(c.id,newBal);
       renderClientList();
-      appendMsg(message||`✅ Registré que le debés $${fmt(amount)} a ${client}. Saldo neto: ${newBal>=0?'Gero te debe':'Vos le debés'} $${fmt(Math.abs(newBal))}.`,'ai');
+      appendMsg(message||`✅ Le debés ${curSym}${fmt(amount)} [${cur}] a ${client}${note?' — '+note:''}.`,'ai');
     }catch(e){appendMsg('Error: '+e.message,'ai');}
   } else if((action==='pago_cliente'||action==='pago')&&client&&amount){
     try{
       const c=findClient(client);
       if(!c){appendMsg(`⚠️ No encontré a "${client}". Revisá el nombre.`,'ai');return;}
-      const newBal=Number(c.balance)-Number(amount); // Gero pagó → balance baja
-      await addMovement(c.id,'pago_cliente',amount,note||'');
+      const newBal=Number(c.balance)-Number(amount);
+      await addMovement(c.id,'pago_cliente',amount,note||'',cur);
       await updateClientBalance(c.id,newBal);
       renderClientList();
-      appendMsg(message||`✅ ${client} te pagó $${fmt(amount)}. Saldo neto: ${newBal>=0?client+' te debe':'Vos le debés'} $${fmt(Math.abs(newBal))}.`,'ai');
+      appendMsg(message||`✅ ${client} te pagó ${curSym}${fmt(amount)} [${cur}]${note?' — '+note:''}.`,'ai');
     }catch(e){appendMsg('Error: '+e.message,'ai');}
   } else if(action==='pago_yo'&&client&&amount){
     try{
       const c=findClient(client);
       if(!c){appendMsg(`⚠️ No encontré a "${client}". Revisá el nombre.`,'ai');return;}
-      const newBal=Number(c.balance)+Number(amount); // vos pagaste lo que debías → balance sube
-      await addMovement(c.id,'pago_yo',amount,note||'');
+      const newBal=Number(c.balance)+Number(amount);
+      await addMovement(c.id,'pago_yo',amount,note||'',cur);
       await updateClientBalance(c.id,newBal);
       renderClientList();
-      appendMsg(message||`✅ Le pagaste $${fmt(amount)} a ${client}. Saldo neto: ${newBal>=0?client+' te debe':'Vos le debés'} $${fmt(Math.abs(newBal))}.`,'ai');
+      appendMsg(message||`✅ Le pagaste ${curSym}${fmt(amount)} [${cur}] a ${client}${note?' — '+note:''}.`,'ai');
     }catch(e){appendMsg('Error: '+e.message,'ai');}
   } else if(action==='ganancia'&&amount){
     await addGanancia(amount,desc||'Ganancia');
