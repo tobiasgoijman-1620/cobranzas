@@ -891,13 +891,11 @@ async function openClient(id){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
 
   const movs=await getClientMovements(id);
-  const totalDeuda=movs.filter(m=>m.type==='deuda').reduce((s,m)=>s+Number(m.amount),0);
-  const totalPagado=movs.filter(m=>m.type==='pago').reduce((s,m)=>s+Number(m.amount),0);
-
-  // Calcular correctamente desde perspectiva del usuario (T)
+  // Cuánto el cliente te debe a vos (deuda_cliente) 
   const elMeDebeATi = movs.filter(m=>m.type==='deuda_cliente'||m.type==='deuda').reduce((s,m)=>s+Number(m.amount),0);
+  // Cuánto vos le debés al cliente (deuda_yo)
   const yoLeDeboCli = movs.filter(m=>m.type==='deuda_yo').reduce((s,m)=>s+Number(m.amount),0);
-  // saldo positivo = cliente te debe a vos / negativo = vos le debés al cliente
+  // Saldo neto desde tu perspectiva: positivo = te deben, negativo = debés
   const saldoNeto = elMeDebeATi - yoLeDeboCli;
 
   document.getElementById('clientContent').innerHTML=`
