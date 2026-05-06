@@ -1251,15 +1251,18 @@ function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrol
 
 // ─── DOWNLOAD HISTORY ─────────────────────────────────────────────────
 async function downloadHistory(){
+  // Refrescar el cliente desde Supabase para tener el balance actualizado
+  if(!selectedClientId){alert('Seleccioná un cliente primero');return;}
+  if(sbClient&&currentUser){
+    const {data} = await sbClient.from('clients').select('*').eq('id',selectedClientId).single();
+    if(data){ const idx=clientsCache.findIndex(x=>x.id===selectedClientId); if(idx>=0) clientsCache[idx]=data; }
+  }
   const c=clientsCache.find(x=>x.id===selectedClientId);
-  if(!c){alert('Seleccioná un cliente primero');return;}
+  if(!c){alert('No se encontró el cliente');return;}
   const movs=await getClientMovements(c.id);
-  // Lo que el cliente te debe a vos
-  const totalTeDebeCli=movs.filter(m=>m.type==='deuda_cliente'||m.type==='deuda').reduce((s,m)=>s+Number(m.amount),0);
-  // Lo que vos le debés al cliente
-  const totalLeDebésVos=movs.filter(m=>m.type==='deuda_yo').reduce((s,m)=>s+Number(m.amount),0);
-  const totalDeuda=totalTeDebeCli;
-  const totalPagado=totalLeDebésVos;
+  // balance de Supabase es la fuente de verdad
+  // positivo = cliente te debe, negativo = vos le debés
+  const clientBalance = Number(c.balance);
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
@@ -1293,8 +1296,10 @@ async function downloadHistory(){
   // Saldo badge — desde la perspectiva del cliente que recibe el PDF
   // balance > 0: el CLIENTE le debe al usuario → el cliente VE que debe plata → rojo
   // balance < 0: el USUARIO le debe al cliente → el cliente VE que le deben plata → verde
-  const saldoText = c.balance>0?`DEBÉS $${fmt(c.balance)}`:c.balance<0?`TE DEBEN $${fmt(Math.abs(c.balance))}`:'AL DÍA';
-  const badgeColor = c.balance>0?[255,96,96]:c.balance<0?[78,203,122]:[200,245,90];
+  // balance > 0 = cliente te debe → "TE DEBEN" verde
+  // balance < 0 = vos debés → "DEBÉS" rojo
+  const saldoText = clientBalance>0?`TE DEBEN $${fmt(clientBalance)}`:clientBalance<0?`DEBÉS $${fmt(Math.abs(clientBalance))}`:'AL DÍA';
+  const badgeColor = clientBalance>0?[78,203,122]:clientBalance<0?[255,96,96]:[200,245,90];
   doc.setFillColor(...badgeColor);
   doc.roundedRect(W-52,10,46,16,3,3,'F');
   doc.setTextColor(15,15,15);
@@ -1304,10 +1309,11 @@ async function downloadHistory(){
 
   // Summary cards
   let y=48;
-  // Solo saldo neto — un número grande centrado
-  const bal = Number(c.balance);
-  const saldoLabel = bal>0?'Te deben':bal<0?'Debés':'Al día';
-  const saldoColor = bal>0?[78,203,122]:bal<0?[255,96,96]:[200,245,90];
+  // Usar el mismo balance que el badge del header
+  // balance > 0 = te deben (verde), balance < 0 = debés (rojo)
+  const saldoLabel = clientBalance>0?'Te deben':clientBalance<0?'Debés':'Al día';
+  const saldoColor = clientBalance>0?[78,203,122]:clientBalance<0?[255,96,96]:[200,245,90];
+  const bal = clientBalance;
   doc.setFillColor(24,24,24);
   doc.roundedRect(10,y,W-20,20,2,2,'F');
   doc.setTextColor(130,130,130);
