@@ -870,7 +870,7 @@ function renderClientList(){
     <div class="client-row${selectedClientId===c.id?' active':''}" onclick="openClient('${c.id}')">
       <div class="cr-name">${c.name}</div>
       <div class="cr-bal ${c.balance>0?'bal-debt':c.balance<0?'bal-ok':'bal-zero'}">
-        ${c.balance>0?'Debe $'+fmt(c.balance):c.balance<0?'A favor $'+fmt(Math.abs(c.balance)):'Al día ✓'}
+        ${c.balance>0?'Te debe $'+fmt(c.balance):c.balance<0?'Le debés $'+fmt(Math.abs(c.balance)):'Al día ✓'}
       </div>
     </div>`).join('') : '<div class="no-clients">Aún no hay clientes.</div>';
   if(el) el.innerHTML=html;
@@ -894,13 +894,19 @@ async function openClient(id){
   const totalDeuda=movs.filter(m=>m.type==='deuda').reduce((s,m)=>s+Number(m.amount),0);
   const totalPagado=movs.filter(m=>m.type==='pago').reduce((s,m)=>s+Number(m.amount),0);
 
+  // Calcular correctamente desde perspectiva del usuario (T)
+  const elMeDebeATi = movs.filter(m=>m.type==='deuda_cliente'||m.type==='deuda').reduce((s,m)=>s+Number(m.amount),0);
+  const yoLeDeboCli = movs.filter(m=>m.type==='deuda_yo').reduce((s,m)=>s+Number(m.amount),0);
+  // saldo positivo = cliente te debe a vos / negativo = vos le debés al cliente
+  const saldoNeto = elMeDebeATi - yoLeDeboCli;
+
   document.getElementById('clientContent').innerHTML=`
     <div class="card">
       <div class="card-title">Resumen de cuenta</div>
       <div class="stats-grid">
-        <div class="stat"><div class="stat-lbl">Total deudas</div><div class="stat-val sv-red">$${fmt(totalDeuda)}</div></div>
-        <div class="stat"><div class="stat-lbl">Total pagado</div><div class="stat-val sv-green">$${fmt(totalPagado)}</div></div>
-        <div class="stat"><div class="stat-lbl">Saldo actual</div><div class="stat-val ${c.balance>0?'sv-red':'sv-green'}">$${fmt(Math.abs(c.balance))}</div></div>
+        <div class="stat"><div class="stat-lbl">${c.name} te debe</div><div class="stat-val sv-red">$${fmt(elMeDebeATi)}</div></div>
+        <div class="stat"><div class="stat-lbl">Vos le debés</div><div class="stat-val sv-green">$${fmt(yoLeDeboCli)}</div></div>
+        <div class="stat"><div class="stat-lbl">Saldo neto</div><div class="stat-val ${saldoNeto>0?'sv-red':saldoNeto<0?'sv-green':'sv-blue'}">$${fmt(Math.abs(saldoNeto))}</div></div>
       </div>
     </div>
     <div class="card">
@@ -1299,9 +1305,6 @@ async function downloadHistory(){
 
   // Summary cards
   let y=48;
-  // Desde perspectiva del cliente:
-  // "Lo que debés" = lo que el cliente debe al usuario (rojo para el cliente)
-  // "Lo que te deben" = lo que el usuario debe al cliente (verde para el cliente)
   const cards=[
     {label:'Lo que debés',value:`$${fmt(totalTeDebeCli)}`,color:[255,96,96]},
     {label:'Lo que te deben',value:`$${fmt(totalLeDebésVos)}`,color:[78,203,122]},
