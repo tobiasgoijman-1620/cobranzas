@@ -850,10 +850,11 @@ async function updateClientBalance(clientId,newBalance){
   if(c) c.balance=newBalance;
 }
 
-async function addGanancia(amount,desc){
+async function addGanancia(amount,desc,currency='USD'){
   const monthKey=new Date().toLocaleDateString('es-AR',{month:'long',year:'numeric'});
-  if(!sbClient||!currentUser){gananciasCache.push({amount,description:desc,month_key:monthKey,created_at:new Date().toISOString()});return;}
-  const {data}=await sbClient.from('ganancias').insert({user_id:currentUser.id,amount,description:desc,month_key:monthKey}).select().single();
+  if(!sbClient||!currentUser){gananciasCache.push({amount,description:desc,month_key:monthKey,currency,created_at:new Date().toISOString()});return;}
+  const {data,error}=await sbClient.from('ganancias').insert({user_id:currentUser.id,amount,description:desc,month_key:monthKey,currency}).select().single();
+  if(error) console.error('Ganancia error:',error);
   if(data) gananciasCache.push(data);
 }
 
@@ -899,8 +900,13 @@ function renderClientList(){
   const html = clientsCache.length ? clientsCache.map(c=>`
     <div class="client-row${selectedClientId===c.id?' active':''}" onclick="openClient('${c.id}')">
       <div class="cr-name">${c.name}</div>
-      <div class="cr-bal ${c.balance>0?'bal-ok':c.balance<0?'bal-debt':'bal-zero'}">
-        ${c.balance>0?'Te debe':'Le debés'}${c.balance===0?' Al día ✓':''}
+      <div style="margin-top:3px;display:flex;flex-direction:column;gap:1px;">
+        ${c.balance>0?
+          `<div style="font-size:10px;color:var(--green);font-family:var(--mono);">Te debe</div>`:
+          c.balance<0?
+          `<div style="font-size:10px;color:var(--red);font-family:var(--mono);">Le debés</div>`:
+          `<div style="font-size:10px;color:var(--text3);">Al día ✓</div>`
+        }
       </div>
     </div>`).join('') : '<div class="no-clients">Aún no hay clientes.</div>';
   if(el) el.innerHTML=html;
@@ -944,20 +950,21 @@ async function openClient(id){
 
   const currencyCards = Object.entries(currencies).map(([cur,data])=>{
     const b = data.balance;
-    const color = b>0?'var(--red)':b<0?'var(--green)':'var(--text3)';
-    const label = b>0?`${c.name} te debe`:b<0?`Vos le debés a ${c.name}`:'Al día';
-    return `<div style="background:var(--bg);border-radius:8px;padding:14px;text-align:center;border:1px solid var(--border);">
-      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:6px;">${curSymbol(cur)}</div>
-      <div style="font-size:28px;font-weight:700;color:${color};">${b>0?'+':b<0?'-':''}${fmt(Math.abs(b))}</div>
-      <div style="font-size:11px;color:var(--text2);margin-top:4px;">${label}</div>
+    const color = b>0?'var(--green)':b<0?'var(--red)':'var(--text3)';
+    const label = b>0?`${c.name} te debe`:b<0?`Le debés a ${c.name}`:'Al día';
+    const sign = b>0?'+':b<0?'-':'';
+    return `<div style="background:var(--bg);border-radius:8px;padding:12px 10px;text-align:center;border:1px solid var(--border);min-width:0;overflow:hidden;">
+      <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;">${cur}</div>
+      <div style="font-size:20px;font-weight:700;color:${color};word-break:break-all;">${sign}${fmt(Math.abs(b))}</div>
+      <div style="font-size:10px;color:var(--text2);margin-top:4px;">${label}</div>
     </div>`;
   }).join('');
 
   document.getElementById('clientContent').innerHTML=`
     <div class="card">
       <div class="card-title">Saldos por moneda</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">
-        ${currencyCards||'<div style="color:var(--text3);font-size:12px;">Sin movimientos</div>'}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;">
+        ${currencyCards||'<div style="color:var(--text3);font-size:12px;">Sin movimientos aún</div>'}
       </div>
     </div>
     <div class="card">
@@ -1280,8 +1287,8 @@ async function processAction({action,client,amount,currency,note,desc,message}){
       appendMsg(message||`✅ Le pagaste ${curSym}${fmt(amount)} [${cur}] a ${client}${note?' — '+note:''}.`,'ai');
     }catch(e){appendMsg('Error: '+e.message,'ai');}
   } else if(action==='ganancia'&&amount){
-    await addGanancia(amount,desc||'Ganancia');
-    appendMsg(message||`✅ Ganancia de $${fmt(amount)} registrada.`,'ai');
+    await addGanancia(amount,desc||'Ganancia',cur);
+    appendMsg(message||`✅ Ganancia de ${cur==='ARS'?'$ARS ':cur==='USDT'?'USDT ':cur==='EUR'?'€':'$'}${fmt(amount)} [${cur}] registrada.`,'ai');
   } else if(action==='ver_cliente'&&client){
     const c=clientsCache.find(x=>x.name.toLowerCase()===client.toLowerCase());
     if(c){openClient(c.id);appendMsg(message||`Acá está la cuenta de ${client} 👆`,'ai');}
