@@ -1193,31 +1193,31 @@ async function processAction({action,client,amount,note,desc,message}){
     try{
       const c=findClient(client);
       if(!c){appendMsg(`⚠️ No encontré a "${client}". Agregalo primero desde la solapa Clientes.`,'ai');return;}
-      const newBal=Number(c.balance)-Number(amount);
+      const newBal=Number(c.balance)-Number(amount); // vos debés más → balance baja
       await addMovement(c.id,'deuda_yo',amount,note||'');
       await updateClientBalance(c.id,newBal);
       renderClientList();
-      appendMsg(message||`✅ Registré que vos le debés $${fmt(amount)} a ${client}. Saldo: $${fmt(newBal)}.`,'ai');
+      appendMsg(message||`✅ Registré que le debés $${fmt(amount)} a ${client}. Saldo neto: ${newBal>=0?'Gero te debe':'Vos le debés'} $${fmt(Math.abs(newBal))}.`,'ai');
     }catch(e){appendMsg('Error: '+e.message,'ai');}
   } else if((action==='pago_cliente'||action==='pago')&&client&&amount){
     try{
       const c=findClient(client);
       if(!c){appendMsg(`⚠️ No encontré a "${client}". Revisá el nombre.`,'ai');return;}
-      const newBal=Number(c.balance)-Number(amount);
+      const newBal=Number(c.balance)-Number(amount); // Gero pagó → balance baja
       await addMovement(c.id,'pago_cliente',amount,note||'');
       await updateClientBalance(c.id,newBal);
       renderClientList();
-      appendMsg(message||`✅ ${client} te pagó $${fmt(amount)}. Saldo: $${fmt(newBal)}.`,'ai');
+      appendMsg(message||`✅ ${client} te pagó $${fmt(amount)}. Saldo neto: ${newBal>=0?client+' te debe':'Vos le debés'} $${fmt(Math.abs(newBal))}.`,'ai');
     }catch(e){appendMsg('Error: '+e.message,'ai');}
   } else if(action==='pago_yo'&&client&&amount){
     try{
       const c=findClient(client);
       if(!c){appendMsg(`⚠️ No encontré a "${client}". Revisá el nombre.`,'ai');return;}
-      const newBal=Number(c.balance)+Number(amount);
+      const newBal=Number(c.balance)+Number(amount); // vos pagaste lo que debías → balance sube
       await addMovement(c.id,'pago_yo',amount,note||'');
       await updateClientBalance(c.id,newBal);
       renderClientList();
-      appendMsg(message||`✅ Le pagaste $${fmt(amount)} a ${client}. Saldo: $${fmt(newBal)}.`,'ai');
+      appendMsg(message||`✅ Le pagaste $${fmt(amount)} a ${client}. Saldo neto: ${newBal>=0?client+' te debe':'Vos le debés'} $${fmt(Math.abs(newBal))}.`,'ai');
     }catch(e){appendMsg('Error: '+e.message,'ai');}
   } else if(action==='ganancia'&&amount){
     await addGanancia(amount,desc||'Ganancia');
