@@ -1286,8 +1286,8 @@ async function downloadHistory(){
   doc.text(`Emitido: ${dateStr}`,36,31);
 
   // Saldo badge — desde la perspectiva del cliente que recibe el PDF
-  // balance > 0: el cliente te debe a vos → el cliente VE que debe dinero
-  // balance < 0: vos le debés al cliente → el cliente VE que le deben dinero
+  // balance > 0: el CLIENTE le debe al usuario → el cliente VE que debe plata → rojo
+  // balance < 0: el USUARIO le debe al cliente → el cliente VE que le deben plata → verde
   const saldoText = c.balance>0?`DEBÉS $${fmt(c.balance)}`:c.balance<0?`TE DEBEN $${fmt(Math.abs(c.balance))}`:'AL DÍA';
   const badgeColor = c.balance>0?[255,96,96]:c.balance<0?[78,203,122]:[200,245,90];
   doc.setFillColor(...badgeColor);
@@ -1299,9 +1299,12 @@ async function downloadHistory(){
 
   // Summary cards
   let y=48;
+  // Desde perspectiva del cliente:
+  // "Lo que debés" = lo que el cliente debe al usuario (rojo para el cliente)
+  // "Lo que te deben" = lo que el usuario debe al cliente (verde para el cliente)
   const cards=[
-    {label:'Ellos te deben',value:`$${fmt(totalTeDebeCli)}`,color:[255,96,96]},
-    {label:'Vos les debés',value:`$${fmt(totalLeDebésVos)}`,color:[78,203,122]},
+    {label:'Lo que debés',value:`$${fmt(totalTeDebeCli)}`,color:[255,96,96]},
+    {label:'Lo que te deben',value:`$${fmt(totalLeDebésVos)}`,color:[78,203,122]},
     {label:'Saldo neto',value:`$${fmt(Math.abs(c.balance))}`,color:badgeColor}
   ];
   const cw=(W-20)/3-3;
@@ -1330,12 +1333,12 @@ async function downloadHistory(){
   doc.line(10,y+2,W-10,y+2);
 
   const rows = [...movs].reverse().map(m=>{
-    const tipo = m.type==='deuda_cliente'?'Te debe':
-                 m.type==='deuda_yo'?'Les debés':
-                 m.type==='pago_cliente'?'Te pagó':
-                 m.type==='pago_yo'?'Les pagaste':
-                 m.type==='deuda'?'Deuda':'Pago';
-    // Desde perspectiva del cliente: si el cliente debe → negativo para él, si vos debés → positivo para él
+    // Desde perspectiva del cliente que recibe el PDF:
+    const tipo = m.type==='deuda_cliente'?'Debés':
+                 m.type==='deuda_yo'?'Te deben':
+                 m.type==='pago_cliente'?'Pagaste':
+                 m.type==='pago_yo'?'Te pagaron':
+                 m.type==='deuda'?'Debés':'Pagaste';
     const signo = (m.type==='deuda_cliente'||m.type==='deuda'||m.type==='pago_yo')?'-':'+';
     return [fmtDate(m.created_at), tipo, m.note||'-', signo+'$'+fmt(Number(m.amount))];
   });
@@ -1356,7 +1359,7 @@ async function downloadHistory(){
     },
     didParseCell:(data)=>{
       if(data.column.index===3&&data.section==='body'){
-        // rojo = cliente debe (negativo para él), verde = vos debés (positivo para él)
+        // rojo = cliente debe (negativo para él), verde = le deben al cliente (positivo para él)
         data.cell.styles.textColor = data.cell.raw.startsWith('-')?[220,60,60]:[60,180,100];
       }
     }
