@@ -988,8 +988,12 @@ async function openClient(id){
               <div class="tx-date">${fmtDate(m.created_at)}</div>
             </div>
             <div style="display:flex;align-items:center;gap:6px;">
-              <div class="tx-amt ${(m.type==='deuda_cliente'||m.type==='deuda'||m.type==='pago_cliente'||m.type==='pago')?'amt-neg':'amt-pos'}" id="amt-${m.id}">
-                ${(m.type==='deuda_cliente'||m.type==='deuda')?'+':m.type==='deuda_yo'?'-':m.type==='pago_cliente'||m.type==='pago'?'-':'+'}${fmt(Number(m.amount))} ${m.currency||'USD'}
+              <div class="tx-amt ${
+                (m.type==='deuda_cliente'||m.type==='deuda'||m.type==='pago_yo')?'amt-pos':'amt-neg'
+              }" id="amt-${m.id}">
+                ${(m.type==='deuda_cliente'||m.type==='deuda')?'+':
+                  m.type==='deuda_yo'?'-':
+                  m.type==='pago_cliente'||m.type==='pago'?'+':'-'}${fmt(Number(m.amount))} ${m.currency||'USD'}
               </div>
               <button class="btn" style="padding:3px 7px;font-size:11px;" onclick="editMovement('${m.id}','${m.type}',${m.amount},'${id}')">✏️</button>
               <button class="btn" style="padding:3px 7px;font-size:11px;color:var(--red);" onclick="deleteMovement('${m.id}','${m.type}',${m.amount},'${id}')">✕</button>
