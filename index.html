@@ -185,6 +185,15 @@ input:focus{border-color:var(--accent);}
 .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
 .import-zone{border:2px dashed var(--border2);border-radius:var(--r);padding:24px;text-align:center;font-size:12px;color:var(--text3);cursor:pointer;transition:all .15s;}
 .import-zone:hover{border-color:var(--accent);color:var(--accent);}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal-box{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:24px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:14px;}
+.modal-box h3{font-size:15px;font-weight:600;}
+.modal-box input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:11px 13px;color:var(--text);font-family:var(--sans);font-size:14px;outline:none;}
+.modal-box input:focus{border-color:var(--accent);}
+.modal-btns{display:flex;gap:8px;}
+.modal-btns button{flex:1;padding:10px;border-radius:8px;font-size:13px;font-family:var(--sans);font-weight:500;cursor:pointer;border:1px solid var(--border2);}
+.modal-confirm{background:var(--accent);color:#0f0f0f;border-color:transparent;}
+.modal-cancel{background:none;color:var(--text2);}
 
 @media(max-width:640px){
   /* Layout */
@@ -937,10 +946,10 @@ async function deleteMovement(movId,type,amount,clientId){
 }
 
 async function editMovement(movId,type,oldAmount,clientId){
-  const newStr=prompt(`Nuevo monto (actual: $${fmt(oldAmount)}):`,oldAmount);
+  const newStr=window.prompt(`Nuevo monto (actual: $${fmt(oldAmount)}):`,oldAmount);
   if(!newStr) return;
   const newAmt=parseFloat(newStr.replace(',','.'));
-  if(isNaN(newAmt)||newAmt<=0){alert('Monto inválido');return;}
+  if(isNaN(newAmt)||newAmt<=0){window.alert('Monto inválido');return;}
   if(!sbClient||!currentUser) return;
   await sbClient.from('movements').update({amount:newAmt}).eq('id',movId);
   const c=clientsCache.find(x=>x.id===clientId);
@@ -1043,10 +1052,10 @@ async function deleteGananciaById(ganId){
 }
 
 async function editGananciaById(ganId,oldAmount){
-  const newStr=prompt(`Nuevo monto (actual: $${fmt(oldAmount)}):`,oldAmount);
+  const newStr=window.prompt(`Nuevo monto (actual: $${fmt(oldAmount)}):`,oldAmount);
   if(!newStr) return;
   const newAmt=parseFloat(newStr.replace(',','.'));
-  if(isNaN(newAmt)||newAmt<=0){alert('Monto inválido');return;}
+  if(isNaN(newAmt)||newAmt<=0){window.alert('Monto inválido');return;}
   if(!sbClient||!currentUser) return;
   await sbClient.from('ganancias').update({amount:newAmt}).eq('id',ganId);
   const g=gananciasCache.find(x=>x.id===ganId);
@@ -1395,12 +1404,25 @@ function showPanel(id,btn){
 }
 
 function showAddClientDialog(){
-  const name = prompt('Nombre del nuevo cliente:');
-  if(!name||!name.trim()) return;
-  const trimmed = name.trim();
-  const exists = clientsCache.find(c=>c.name.toLowerCase()===trimmed.toLowerCase());
-  if(exists){alert(`${trimmed} ya existe como cliente.`);return;}
-  upsertClient(trimmed).then(()=>{renderClientList();});
+  document.getElementById('newClientName').value='';
+  document.getElementById('addClientError').style.display='none';
+  document.getElementById('addClientModal').style.display='flex';
+  setTimeout(()=>document.getElementById('newClientName').focus(),100);
+}
+
+function closeAddClientModal(){
+  document.getElementById('addClientModal').style.display='none';
+}
+
+async function confirmAddClient(){
+  const name = document.getElementById('newClientName').value.trim();
+  const errEl = document.getElementById('addClientError');
+  if(!name){errEl.textContent='Escribí un nombre';errEl.style.display='block';return;}
+  const exists = clientsCache.find(c=>c.name.toLowerCase()===name.toLowerCase());
+  if(exists){errEl.textContent=`"${name}" ya existe`;errEl.style.display='block';return;}
+  closeAddClientModal();
+  await upsertClient(name);
+  renderClientList();
 }
 
 // ─── UTILS ────────────────────────────────────────────────────────────
@@ -1433,5 +1455,16 @@ if('serviceWorker' in navigator){
   });
 }
 </script>
+<div id="addClientModal" style="display:none;" class="modal-overlay" onclick="if(event.target===this)closeAddClientModal()">
+  <div class="modal-box">
+    <h3>➕ Nuevo cliente</h3>
+    <input type="text" id="newClientName" placeholder="Nombre del cliente" onkeydown="if(event.key==='Enter')confirmAddClient()" />
+    <div id="addClientError" style="font-size:12px;color:var(--red);display:none;"></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeAddClientModal()">Cancelar</button>
+      <button class="modal-confirm" onclick="confirmAddClient()">Agregar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
