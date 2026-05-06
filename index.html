@@ -869,7 +869,7 @@ function renderClientList(){
   const html = clientsCache.length ? clientsCache.map(c=>`
     <div class="client-row${selectedClientId===c.id?' active':''}" onclick="openClient('${c.id}')">
       <div class="cr-name">${c.name}</div>
-      <div class="cr-bal ${c.balance>0?'bal-debt':c.balance<0?'bal-ok':'bal-zero'}">
+      <div class="cr-bal ${c.balance>0?'bal-ok':c.balance<0?'bal-debt':'bal-zero'}">
         ${c.balance>0?'Te debe $'+fmt(c.balance):c.balance<0?'Le debés $'+fmt(Math.abs(c.balance)):'Al día ✓'}
       </div>
     </div>`).join('') : '<div class="no-clients">Aún no hay clientes.</div>';
@@ -885,7 +885,7 @@ async function openClient(id){
   const c=clientsCache.find(x=>x.id===id);
   if(!c) return;
   document.getElementById('clientPanelName').textContent=c.name;
-  document.getElementById('clientPanelSub').textContent=c.balance>0?`Debe $${fmt(c.balance)}`:c.balance<0?`A favor $${fmt(Math.abs(c.balance))}`:'Al día';
+  document.getElementById('clientPanelSub').textContent=c.balance>0?`Te debe $${fmt(c.balance)}`:c.balance<0?`Le debés $${fmt(Math.abs(c.balance))}`:'Al día';
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-cliente').classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
