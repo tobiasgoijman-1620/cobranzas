@@ -1304,25 +1304,20 @@ async function downloadHistory(){
 
   // Summary cards
   let y=48;
-  const cards=[
-    {label:'Lo que debés',value:`$${fmt(totalTeDebeCli)}`,color:[255,96,96]},
-    {label:'Lo que te deben',value:`$${fmt(totalLeDebésVos)}`,color:[78,203,122]},
-    {label:'Saldo neto',value:`$${fmt(Math.abs(c.balance))}`,color:badgeColor}
-  ];
-  const cw=(W-20)/3-3;
-  cards.forEach((card,i)=>{
-    const cx=10+i*(cw+4);
-    doc.setFillColor(24,24,24);
-    doc.roundedRect(cx,y,cw,20,2,2,'F');
-    doc.setTextColor(130,130,130);
-    doc.setFontSize(7);
-    doc.setFont('helvetica','normal');
-    doc.text(card.label,cx+cw/2,y+7,{align:'center'});
-    doc.setTextColor(...card.color);
-    doc.setFontSize(11);
-    doc.setFont('helvetica','bold');
-    doc.text(card.value,cx+cw/2,y+15,{align:'center'});
-  });
+  // Solo saldo neto — un número grande centrado
+  const bal = Number(c.balance);
+  const saldoLabel = bal>0?'Te deben':bal<0?'Debés':'Al día';
+  const saldoColor = bal>0?[78,203,122]:bal<0?[255,96,96]:[200,245,90];
+  doc.setFillColor(24,24,24);
+  doc.roundedRect(10,y,W-20,20,2,2,'F');
+  doc.setTextColor(130,130,130);
+  doc.setFontSize(7);
+  doc.setFont('helvetica','normal');
+  doc.text('SALDO NETO',(W/2)-20,y+7);
+  doc.setTextColor(...saldoColor);
+  doc.setFontSize(13);
+  doc.setFont('helvetica','bold');
+  doc.text(`${saldoLabel}: $${fmt(Math.abs(bal))}`,(W/2)-20,y+15);
 
   // Movements table
   y=76;
