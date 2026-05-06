@@ -891,12 +891,12 @@ async function openClient(id){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
 
   const movs=await getClientMovements(id);
-  // Cuánto el cliente te debe a vos (deuda_cliente) 
-  const elMeDebeATi = movs.filter(m=>m.type==='deuda_cliente'||m.type==='deuda').reduce((s,m)=>s+Number(m.amount),0);
-  // Cuánto vos le debés al cliente (deuda_yo)
-  const yoLeDeboCli = movs.filter(m=>m.type==='deuda_yo').reduce((s,m)=>s+Number(m.amount),0);
-  // Saldo neto desde tu perspectiva: positivo = te deben, negativo = debés
-  const saldoNeto = elMeDebeATi - yoLeDeboCli;
+  // Usar el balance de Supabase como fuente de verdad
+  // balance > 0 = el cliente te debe a vos
+  // balance < 0 = vos le debés al cliente
+  const bal = Number(c.balance);
+  const elMeDebeATi = bal > 0 ? bal : 0;
+  const yoLeDeboCli = bal < 0 ? Math.abs(bal) : 0;
 
   document.getElementById('clientContent').innerHTML=`
     <div class="card">
@@ -904,7 +904,7 @@ async function openClient(id){
       <div class="stats-grid">
         <div class="stat"><div class="stat-lbl">${c.name} te debe</div><div class="stat-val sv-red">$${fmt(elMeDebeATi)}</div></div>
         <div class="stat"><div class="stat-lbl">Vos le debés</div><div class="stat-val sv-green">$${fmt(yoLeDeboCli)}</div></div>
-        <div class="stat"><div class="stat-lbl">Saldo neto</div><div class="stat-val ${saldoNeto>0?'sv-red':saldoNeto<0?'sv-green':'sv-blue'}">$${fmt(Math.abs(saldoNeto))}</div></div>
+        <div class="stat"><div class="stat-lbl">Saldo neto</div><div class="stat-val ${bal>0?'sv-red':bal<0?'sv-green':'sv-blue'}">$${fmt(Math.abs(bal))}</div></div>
       </div>
     </div>
     <div class="card">
