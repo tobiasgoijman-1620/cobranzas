@@ -733,7 +733,7 @@ async function importBackup(event){
 
     statusEl.textContent = '⏳ Importando movimientos...';
     if(data.movements.length){
-      const movs = data.movements.map(m=>({...m, user_id:currentUser.id}));
+      const movs = data.movements.map(m=>({...m, user_id:currentUser.id, currency:m.currency||'USD'}));
       await sbClient.from('movements').insert(movs);
     }
 
