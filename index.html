@@ -956,13 +956,47 @@ async function openClient(id){
     </div>`;
   }).join('');
 
-  document.getElementById('clientContent').innerHTML=`
-    <div class="card">
-      <div class="card-title">Saldos por moneda</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;">
-        ${currencyCards||'<div style="color:var(--text3);font-size:12px;">Sin movimientos aún</div>'}
+  // Build one section per currency
+  const currencySections = Object.entries(currencies).map(([cur,data])=>{
+    const b = data.balance;
+    const label = b>0?`${c.name} te debe`:b<0?`Vos le debés a ${c.name}`:'Al día ✓';
+    const sign = b>0?'+':b<0?'-':'';
+    const movsByCur = [...movs].reverse().filter(m=>(m.currency||'USD')===cur);
+    const rows = movsByCur.map(m=>`
+      <div class="tx-row" id="mov-${m.id}">
+        <div style="flex:1;">
+          <div class="tx-desc">${
+            m.type==='deuda_cliente'?'📋 Te debe':
+            m.type==='deuda_yo'?'📋 Le debés vos':
+            m.type==='pago_cliente'?'💰 Te pagó':
+            m.type==='pago_yo'?'💰 Le pagaste vos':
+            m.type==='deuda'?'📋 Deuda':'💰 Pago'
+          }</div>
+          ${m.note?`<div style="font-size:11px;color:var(--accent);margin-top:2px;font-style:italic;">📌 ${m.note}</div>`:''}
+          <div class="tx-date">${fmtDate(m.created_at)}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="font-size:13px;font-weight:500;font-family:var(--mono);white-space:nowrap;color:var(--text);">${fmt(Number(m.amount))} ${cur}</div>
+          <button class="btn" style="padding:3px 7px;font-size:11px;" onclick="editMovement('${m.id}','${m.type}',${m.amount},'${id}')">✏️</button>
+          <button class="btn" style="padding:3px 7px;font-size:11px;color:var(--red);" onclick="deleteMovement('${m.id}','${m.type}',${m.amount},'${id}')">✕</button>
+        </div>
+      </div>`).join('');
+
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;">${cur}</div>
+          <div style="font-size:24px;font-weight:700;color:var(--text);margin-top:2px;">${sign}${fmt(Math.abs(b))}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px;">${label}</div>
+        </div>
       </div>
-    </div>
+      ${rows||'<div class="empty-hist">Sin movimientos</div>'}
+    </div>`;
+  }).join('');
+
+  document.getElementById('clientContent').innerHTML=`
+    ${currencySections||'<div class="card"><div class="empty-hist">Sin movimientos aún</div></div>'}
+    <button class="btn" style="color:var(--red);border-color:var(--red-dim);width:100%;justify-content:center;" onclick="resetClient('${id}')">🗑 Borrar todos los movimientos</button>
     <div class="card">
       <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
         <span>Historial de movimientos</span>
@@ -1375,8 +1409,11 @@ async function downloadHistory(){
   // balance < 0: el USUARIO le debe al cliente → el cliente VE que le deben plata → verde
   // balance > 0 = cliente te debe → "TE DEBEN" verde
   // balance < 0 = vos debés → "DEBÉS" rojo
-  const saldoText = clientBalance>0?`TE DEBEN $${fmt(clientBalance)}`:clientBalance<0?`DEBÉS $${fmt(Math.abs(clientBalance))}`:'AL DÍA';
-  const badgeColor = clientBalance>0?[78,203,122]:clientBalance<0?[255,96,96]:[200,245,90];
+  // Badge shows summary - use first currency or generic
+  const firstCur = Object.entries(pdfCurrencies||{})[0];
+  const firstBal = firstCur?firstCur[1]:0;
+  const saldoText = Object.keys(pdfCurrencies||{}).length>1?'VER SALDOS':firstBal>0?`TE DEBEN ${fmt(firstBal)}`:firstBal<0?`DEBÉS ${fmt(Math.abs(firstBal))}`:'AL DÍA';
+  const badgeColor = firstBal>0?[78,203,122]:firstBal<0?[255,96,96]:[200,245,90];
   doc.setFillColor(...badgeColor);
   doc.roundedRect(W-52,10,46,16,3,3,'F');
   doc.setTextColor(15,15,15);
@@ -1386,21 +1423,36 @@ async function downloadHistory(){
 
   // Summary cards
   let y=48;
-  // Usar el mismo balance que el badge del header
-  // balance > 0 = te deben (verde), balance < 0 = debés (rojo)
-  const saldoLabel = clientBalance>0?'Te deben':clientBalance<0?'Debés':'Al día';
-  const saldoColor = clientBalance>0?[78,203,122]:clientBalance<0?[255,96,96]:[200,245,90];
-  const bal = clientBalance;
-  doc.setFillColor(24,24,24);
-  doc.roundedRect(10,y,W-20,20,2,2,'F');
-  doc.setTextColor(130,130,130);
-  doc.setFontSize(7);
-  doc.setFont('helvetica','normal');
-  doc.text('SALDO NETO',(W/2)-20,y+7);
-  doc.setTextColor(...saldoColor);
-  doc.setFontSize(13);
-  doc.setFont('helvetica','bold');
-  doc.text(`${saldoLabel}: $${fmt(Math.abs(bal))}`,(W/2)-20,y+15);
+  // // Saldos por moneda desde movimientos
+  const pdfCurrencies = {};
+  movs.forEach(m=>{
+    const cur = m.currency||'USD';
+    if(!pdfCurrencies[cur]) pdfCurrencies[cur]=0;
+    const amt = Number(m.amount);
+    if(m.type==='deuda_cliente'||m.type==='deuda') pdfCurrencies[cur]+=amt;
+    else if(m.type==='deuda_yo') pdfCurrencies[cur]-=amt;
+    else if(m.type==='pago_cliente'||m.type==='pago') pdfCurrencies[cur]-=amt;
+    else if(m.type==='pago_yo') pdfCurrencies[cur]+=amt;
+  });
+  const curEntries = Object.entries(pdfCurrencies);
+  if(curEntries.length===0) curEntries.push(['USD',0]);
+  const cardW = Math.min((W-20)/curEntries.length - 3, 55);
+  curEntries.forEach(([cur,bal],i)=>{
+    const cx = 10+i*(cardW+3);
+    const saldoLabel = bal>0?'Te deben':bal<0?'Debes':'Al dia';
+    const saldoColor = bal>0?[78,203,122]:bal<0?[255,96,96]:[150,150,150];
+    doc.setFillColor(24,24,24);
+    doc.roundedRect(cx,y,cardW,20,2,2,'F');
+    doc.setTextColor(130,130,130);
+    doc.setFontSize(7);
+    doc.setFont('helvetica','normal');
+    doc.text(cur,cx+cardW/2,y+6,{align:'center'});
+    doc.setTextColor(...saldoColor);
+    doc.setFontSize(9);
+    doc.setFont('helvetica','bold');
+    const balText = saldoLabel+': '+fmt(Math.abs(bal));
+    doc.text(balText,cx+cardW/2,y+14,{align:'center'});
+  });
 
   // Movements table
   y=76;
