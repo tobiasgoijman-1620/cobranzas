@@ -1,1611 +1,1133 @@
-<!DOCTYPE html><!-- v1778034775 -->
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cobranzas IA</title>
-<meta name="theme-color" content="#0f0f0f">
+<meta name="theme-color" content="#0a0a0a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Cobranzas">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.png">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
 :root {
-  --bg:#0f0f0f;--surface:#181818;--surface2:#222;
-  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
-  --text:#f0ede8;--text2:#888;--text3:#444;
-  --accent:#c8f55a;--accent-dim:rgba(200,245,90,0.1);
-  --red:#ff6060;--red-dim:rgba(255,96,96,0.1);
-  --green:#4ecb7a;--green-dim:rgba(78,203,122,0.1);
-  --blue:#60b0ff;--blue-dim:rgba(96,176,255,0.1);
-  --amber:#ffb547;--amber-dim:rgba(255,181,71,0.08);
-  --r:10px;--mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --bg: #0a0a0a;
+  --s1: #141414;
+  --s2: #1e1e1e;
+  --s3: #282828;
+  --b1: rgba(255,255,255,0.06);
+  --b2: rgba(255,255,255,0.12);
+  --t1: #f2f0ec;
+  --t2: #8a8782;
+  --t3: #4a4845;
+  --acc: #d4f060;
+  --acc2: rgba(212,240,96,0.12);
+  --red: #f06060;
+  --grn: #50d090;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --r: 10px;
 }
-*{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;overflow:hidden;}
-::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: var(--sans); background: var(--bg); color: var(--t1); font-size: 14px; overflow: hidden; }
+::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-thumb { background: var(--b2); border-radius: 3px; }
 
-/* AUTH */
-#authScreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;}
-.auth-box{width:360px;background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:32px;display:flex;flex-direction:column;gap:20px;}
-.auth-logo{text-align:center;}
-.auth-logo .mark{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:.15em;margin-bottom:6px;}
-.auth-logo h1{font-size:22px;font-weight:600;letter-spacing:-.02em;}
-.auth-logo p{font-size:12px;color:var(--text2);margin-top:4px;}
-.auth-tabs{display:flex;background:var(--bg);border-radius:8px;padding:3px;gap:3px;}
-.auth-tab{flex:1;padding:7px;border:none;background:none;color:var(--text2);font-size:13px;font-family:var(--sans);border-radius:6px;cursor:pointer;transition:all .15s;}
-.auth-tab.active{background:var(--surface2);color:var(--text);}
-.auth-form{display:flex;flex-direction:column;gap:12px;}
-.field-label{font-size:11px;color:var(--text2);font-family:var(--mono);margin-bottom:4px;}
-input[type=email],input[type=password],input[type=text]{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;transition:border .15s;}
-input:focus{border-color:var(--accent);}
-.auth-error{font-size:12px;color:var(--red);background:var(--red-dim);padding:8px 12px;border-radius:7px;display:none;}
-.btn-full{width:100%;padding:11px;border-radius:8px;border:none;background:var(--accent);color:#0f0f0f;font-size:14px;font-weight:600;font-family:var(--sans);cursor:pointer;transition:background .15s;}
-.btn-full:hover{background:#d4ff66;}
-.btn-full:disabled{opacity:.5;cursor:default;}
+/* ── AUTH ─────────────────────────────────────────── */
+#authWrap { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 200; }
+.auth-card { width: min(380px, 92vw); background: var(--s1); border: 1px solid var(--b2); border-radius: 16px; padding: 32px; display: flex; flex-direction: column; gap: 20px; }
+.auth-logo { text-align: center; }
+.auth-logo .tag { font-family: var(--mono); font-size: 10px; color: var(--acc); letter-spacing: .15em; text-transform: uppercase; }
+.auth-logo h1 { font-size: 22px; font-weight: 600; margin-top: 6px; }
+.auth-logo p { font-size: 12px; color: var(--t2); margin-top: 4px; }
+.auth-tabs { display: flex; background: var(--bg); border-radius: 8px; padding: 3px; gap: 3px; }
+.auth-tab { flex: 1; padding: 8px; border: none; background: none; color: var(--t2); font-size: 13px; font-family: var(--sans); border-radius: 6px; cursor: pointer; transition: all .15s; }
+.auth-tab.on { background: var(--s2); color: var(--t1); }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 11px; color: var(--t2); font-family: var(--mono); }
+input[type=email], input[type=password], input[type=text], textarea { width: 100%; background: var(--bg); border: 1px solid var(--b2); border-radius: 8px; padding: 10px 12px; color: var(--t1); font-family: var(--sans); font-size: 13px; outline: none; transition: border .15s; }
+input:focus, textarea:focus { border-color: var(--acc); }
+.err-msg { font-size: 12px; color: var(--red); background: rgba(240,96,96,.1); padding: 8px 12px; border-radius: 7px; display: none; }
+.btn-primary { width: 100%; padding: 11px; border-radius: 8px; border: none; background: var(--acc); color: #0a0a0a; font-size: 14px; font-weight: 600; font-family: var(--sans); cursor: pointer; transition: opacity .15s; }
+.btn-primary:hover { opacity: .85; }
+.btn-primary:disabled { opacity: .4; cursor: default; }
 
-/* APP */
-#app{display:none;height:100vh;grid-template-columns:240px 1fr;}
-#app.show{display:grid;}
+/* ── APP LAYOUT ───────────────────────────────────── */
+#app { display: none; height: 100vh; }
+#app.on { display: grid; grid-template-columns: 240px 1fr; }
 
-/* SIDEBAR */
-.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
-.logo{padding:16px;border-bottom:1px solid var(--border);}
-.logo .mark{font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:.15em;text-transform:uppercase;}
-.logo h2{font-size:16px;font-weight:600;letter-spacing:-.02em;margin-top:2px;}
-.user-pill{margin-top:6px;display:flex;align-items:center;gap:6px;}
-.user-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;}
-.user-email{font-size:10px;color:var(--text2);font-family:var(--mono);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.logout-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:2px 4px;border-radius:4px;font-family:var(--sans);}
-.logout-btn:hover{color:var(--red);}
-.nav{padding:8px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:2px;}
-.nav-btn{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;border:none;background:none;color:var(--text2);font-size:13px;font-family:var(--sans);cursor:pointer;width:100%;text-align:left;transition:all .15s;}
-.nav-btn:hover{background:var(--surface2);color:var(--text);}
-.nav-btn.active{background:var(--accent-dim);color:var(--accent);}
-.nav-icon{width:18px;text-align:center;font-size:13px;}
-.clients-section{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
-.sec-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;padding:10px 14px 4px;font-family:var(--mono);}
-.client-list{padding:6px 8px;display:flex;flex-direction:column;gap:1px;flex:1;}
-.client-row{padding:9px 10px;border-radius:8px;cursor:pointer;transition:all .15s;border:1px solid transparent;}
-.client-row:hover{background:var(--surface2);}
-.client-row.active{background:var(--surface2);border-color:var(--border2);}
-.cr-name{font-size:13px;font-weight:500;}
-.cr-bal{font-size:10px;margin-top:2px;font-family:var(--mono);}
-.bal-debt{color:var(--red);}
-.bal-ok{color:var(--green);}
-.bal-zero{color:var(--text3);}
-.no-clients{padding:20px 14px;font-size:12px;color:var(--text3);text-align:center;line-height:1.6;}
+/* ── SIDEBAR ──────────────────────────────────────── */
+.sidebar { background: var(--s1); border-right: 1px solid var(--b1); display: flex; flex-direction: column; overflow: hidden; }
+.sb-head { padding: 16px; border-bottom: 1px solid var(--b1); }
+.sb-head .tag { font-family: var(--mono); font-size: 9px; color: var(--acc); letter-spacing: .15em; text-transform: uppercase; }
+.sb-head h2 { font-size: 16px; font-weight: 600; margin-top: 3px; }
+.user-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.user-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--grn); flex-shrink: 0; }
+.user-email { font-size: 10px; color: var(--t2); font-family: var(--mono); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.logout-btn { background: none; border: none; color: var(--t3); cursor: pointer; font-size: 10px; font-family: var(--sans); padding: 2px 4px; border-radius: 4px; }
+.logout-btn:hover { color: var(--red); }
+.sb-nav { padding: 8px; border-bottom: 1px solid var(--b1); display: flex; flex-direction: column; gap: 2px; }
+.nav-btn { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 8px; border: none; background: none; color: var(--t2); font-size: 13px; font-family: var(--sans); cursor: pointer; width: 100%; text-align: left; transition: all .15s; }
+.nav-btn:hover { background: var(--s2); color: var(--t1); }
+.nav-btn.on { background: var(--acc2); color: var(--acc); }
+.sb-clients { flex: 1; overflow-y: auto; }
+.sb-label { font-size: 9px; color: var(--t3); text-transform: uppercase; letter-spacing: .1em; padding: 10px 14px 4px; font-family: var(--mono); }
+.client-list { padding: 6px 8px; display: flex; flex-direction: column; gap: 1px; }
+.cli-row { padding: 9px 10px; border-radius: 8px; cursor: pointer; transition: all .15s; border: 1px solid transparent; }
+.cli-row:hover { background: var(--s2); }
+.cli-row.on { background: var(--s2); border-color: var(--b2); }
+.cli-name { font-size: 13px; font-weight: 500; }
+.cli-sub { font-size: 10px; color: var(--t2); margin-top: 2px; font-family: var(--mono); }
+.no-clients { padding: 20px 14px; font-size: 12px; color: var(--t3); text-align: center; line-height: 1.6; }
 
-/* MAIN */
-.main{display:flex;flex-direction:column;overflow:hidden;}
-.panel{display:none;flex-direction:column;flex:1;overflow:hidden;}
-.panel.active{display:flex;}
+/* ── MAIN ─────────────────────────────────────────── */
+.main { display: flex; flex-direction: column; overflow: hidden; }
+.panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+.panel.on { display: flex; }
+.ph { padding: 14px 20px; border-bottom: 1px solid var(--b1); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.ph-info { flex: 1; }
+.ph-title { font-size: 15px; font-weight: 600; }
+.ph-sub { font-size: 11px; color: var(--t2); margin-top: 2px; font-family: var(--mono); }
+.btn { padding: 7px 13px; border-radius: 7px; font-size: 12px; font-family: var(--sans); cursor: pointer; transition: all .15s; border: 1px solid var(--b2); background: none; color: var(--t2); display: inline-flex; align-items: center; gap: 5px; font-weight: 500; white-space: nowrap; }
+.btn:hover { color: var(--t1); background: var(--s2); }
+.btn-acc { background: var(--acc); color: #0a0a0a; border-color: transparent; }
+.btn-acc:hover { opacity: .85; background: var(--acc); }
+.btn-red { color: var(--red); border-color: rgba(240,96,96,.2); }
+.btn-red:hover { background: rgba(240,96,96,.08); }
 
-/* PANEL HEADER */
-.ph{padding:13px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;}
-.ph-info{flex:1;}
-.ph-title{font-size:15px;font-weight:600;letter-spacing:-.01em;}
-.ph-sub{font-size:11px;color:var(--text2);margin-top:2px;font-family:var(--mono);}
-.btn{padding:7px 13px;border-radius:7px;font-size:12px;font-family:var(--sans);cursor:pointer;transition:all .15s;border:1px solid var(--border2);background:none;color:var(--text2);display:flex;align-items:center;gap:5px;font-weight:500;white-space:nowrap;}
-.btn:hover{color:var(--text);background:var(--surface2);}
-.btn-accent{background:var(--accent);color:#0f0f0f;border-color:transparent;}
-.btn-accent:hover{background:#d4ff66;border-color:transparent;}
-.btn-green{background:var(--green-dim);color:var(--green);border-color:rgba(78,203,122,0.2);}
-.btn-green:hover{background:rgba(78,203,122,0.18);}
+/* ── CHAT ─────────────────────────────────────────── */
+.chat-msgs { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+.msg { max-width: 80%; }
+.msg-me { align-self: flex-end; }
+.msg-ai { align-self: flex-start; }
+.bubble { padding: 10px 14px; border-radius: 14px; font-size: 13px; line-height: 1.6; }
+.msg-me .bubble { background: var(--acc2); border: 1px solid rgba(212,240,96,.2); border-bottom-right-radius: 3px; }
+.msg-ai .bubble { background: var(--s2); border: 1px solid var(--b2); border-bottom-left-radius: 3px; }
+.msg-time { font-size: 10px; color: var(--t3); margin-top: 4px; font-family: var(--mono); padding: 0 4px; }
+.msg-me .msg-time { text-align: right; }
+.typing { display: flex; gap: 5px; padding: 12px 14px; background: var(--s2); border: 1px solid var(--b2); border-radius: 14px; border-bottom-left-radius: 3px; width: fit-content; }
+.dot { width: 5px; height: 5px; border-radius: 50%; background: var(--t3); animation: bop 1.2s infinite; }
+.dot:nth-child(2) { animation-delay: .2s; } .dot:nth-child(3) { animation-delay: .4s; }
+@keyframes bop { 0%,60%,100% { transform: translateY(0) } 30% { transform: translateY(-5px) } }
+.chat-input-wrap { padding: 12px 20px; border-top: 1px solid var(--b1); display: flex; gap: 8px; align-items: flex-end; }
+.chat-ta { flex: 1; resize: none; background: var(--s2); border: 1px solid var(--b2); border-radius: 10px; padding: 9px 13px; color: var(--t1); font-family: var(--sans); font-size: 13px; outline: none; min-height: 38px; max-height: 110px; line-height: 1.5; transition: border .15s; }
+.chat-ta:focus { border-color: var(--acc); }
+.chat-ta::placeholder { color: var(--t3); }
+.send-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--acc); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #0a0a0a; font-size: 16px; transition: opacity .15s; }
+.send-btn:hover { opacity: .85; }
+.send-btn:disabled { opacity: .4; cursor: default; }
+.api-warn { padding: 9px 20px; background: rgba(212,240,96,.06); border-bottom: 1px solid rgba(212,240,96,.15); font-size: 12px; color: var(--acc); display: flex; align-items: center; gap: 8px; cursor: pointer; flex-shrink: 0; }
 
-/* BACKUP BANNER */
-.backup-banner{padding:9px 20px;display:flex;align-items:center;gap:10px;font-size:12px;flex-shrink:0;cursor:pointer;border-bottom:1px solid var(--border);}
-.backup-banner.warn{background:var(--amber-dim);color:var(--amber);border-bottom-color:rgba(255,181,71,0.15);}
-.backup-banner.ok{display:none;}
-.backup-banner:hover{opacity:.85;}
+/* ── CLIENT DETAIL ────────────────────────────────── */
+.client-body { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+.cur-section { background: var(--s1); border: 1px solid var(--b1); border-radius: var(--r); overflow: hidden; }
+.cur-header { padding: 14px 16px; border-bottom: 1px solid var(--b1); display: flex; justify-content: space-between; align-items: center; }
+.cur-tag { font-family: var(--mono); font-size: 10px; color: var(--t3); text-transform: uppercase; letter-spacing: .1em; }
+.cur-amount { font-size: 26px; font-weight: 600; margin-top: 4px; letter-spacing: -.02em; }
+.cur-label { font-size: 11px; color: var(--t2); margin-top: 3px; }
+.cur-movs { padding: 0 16px; }
+.mov-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--b1); gap: 10px; }
+.mov-row:last-child { border-bottom: none; }
+.mov-left { flex: 1; min-width: 0; }
+.mov-type { font-size: 13px; font-weight: 500; }
+.mov-note { font-size: 11px; color: var(--acc); margin-top: 2px; font-family: var(--mono); }
+.mov-date { font-size: 10px; color: var(--t3); font-family: var(--mono); margin-top: 2px; }
+.mov-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.mov-amount { font-size: 13px; font-weight: 500; font-family: var(--mono); }
+.empty-mov { padding: 14px 16px; font-size: 12px; color: var(--t3); }
 
-/* API BANNER */
-.api-banner{padding:9px 20px;background:var(--amber-dim);border-bottom:1px solid rgba(255,181,71,.15);font-size:12px;color:var(--amber);display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0;}
-.api-banner:hover{opacity:.85;}
+/* ── GANANCIAS ────────────────────────────────────── */
+.gan-body { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+.month-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.mtab { padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1px solid var(--b2); background: none; color: var(--t2); transition: all .15s; font-family: var(--mono); }
+.mtab:hover, .mtab.on { background: var(--acc2); color: var(--acc); border-color: transparent; }
+.card { background: var(--s1); border: 1px solid var(--b1); border-radius: var(--r); padding: 16px; }
+.card-title { font-size: 10px; color: var(--t3); text-transform: uppercase; letter-spacing: .1em; font-family: var(--mono); margin-bottom: 12px; }
+.stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat-box { background: var(--bg); border-radius: 8px; padding: 12px; }
+.stat-lbl { font-size: 10px; color: var(--t2); font-family: var(--mono); }
+.stat-val { font-size: 20px; font-weight: 600; margin-top: 4px; }
+.gan-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--b1); gap: 10px; }
+.gan-row:last-child { border-bottom: none; }
+.gan-desc { font-size: 13px; }
+.gan-cur { font-size: 10px; color: var(--t3); font-family: var(--mono); margin-top: 2px; }
+.gan-date { font-size: 10px; color: var(--t3); font-family: var(--mono); margin-top: 2px; }
+.gan-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.gan-amount { font-size: 13px; font-weight: 500; font-family: var(--mono); color: var(--grn); }
 
-/* CHAT */
-.chat-msgs{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px;}
-.msg{max-width:78%;}
-.msg-me{align-self:flex-end;}
-.msg-ai{align-self:flex-start;}
-.bubble{padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.6;}
-.msg-me .bubble{background:var(--accent-dim);border:1px solid rgba(200,245,90,.2);color:var(--text);border-bottom-right-radius:3px;}
-.msg-ai .bubble{background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-bottom-left-radius:3px;}
-.msg-time{font-size:10px;color:var(--text3);margin-top:4px;font-family:var(--mono);padding:0 4px;}
-.msg-me .msg-time{text-align:right;}
-.typing{display:flex;gap:5px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:14px;border-bottom-left-radius:3px;width:fit-content;}
-.dot{width:5px;height:5px;border-radius:50%;background:var(--text3);animation:bop 1.2s infinite;}
-.dot:nth-child(2){animation-delay:.2s;}.dot:nth-child(3){animation-delay:.4s;}
-@keyframes bop{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
-.chat-input-area{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;}
-.chat-textarea{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:9px 13px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;resize:none;min-height:38px;max-height:110px;line-height:1.5;transition:border .15s;}
-.chat-textarea:focus{border-color:var(--accent);}
-.chat-textarea::placeholder{color:var(--text3);}
-.send-btn{width:36px;height:36px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;color:#0f0f0f;}
-.send-btn:hover{background:#d4ff66;}
-.send-btn:disabled{opacity:.4;cursor:default;}
+/* ── RESPALDOS ────────────────────────────────────── */
+.backup-body { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+.backup-warn { background: rgba(212,240,96,.06); border: 1px solid rgba(212,240,96,.15); border-radius: var(--r); padding: 12px 16px; font-size: 12px; color: var(--acc); cursor: pointer; }
+.import-zone { border: 2px dashed var(--b2); border-radius: var(--r); padding: 24px; text-align: center; font-size: 12px; color: var(--t3); cursor: pointer; transition: all .15s; }
+.import-zone:hover { border-color: var(--acc); color: var(--acc); }
 
-/* CLIENT DETAIL */
-.client-content{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;}
-.card-title{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono);margin-bottom:12px;}
-.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-.stat{background:var(--bg);border-radius:8px;padding:12px;}
-.stat-lbl{font-size:10px;color:var(--text2);font-family:var(--mono);}
-.stat-val{font-size:20px;font-weight:600;margin-top:4px;letter-spacing:-.02em;}
-.sv-red{color:var(--red);}
-.sv-green{color:var(--green);}
-.sv-blue{color:var(--blue);}
-.tx-row{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);}
-.tx-row:last-child{border-bottom:none;}
-.tx-desc{font-size:13px;}
-.tx-note{font-size:11px;color:var(--text2);margin-top:2px;font-style:italic;}
-.tx-date{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:2px;}
-.tx-amt{font-size:13px;font-weight:500;font-family:var(--mono);white-space:nowrap;margin-left:12px;}
-.amt-neg{color:var(--red);}
-.amt-pos{color:var(--green);}
-.empty-hist{font-size:12px;color:var(--text3);text-align:center;padding:20px 0;}
+/* ── CONFIG ───────────────────────────────────────── */
+.config-body { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; max-width: 520px; }
+.badge-ok { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-family: var(--mono); background: rgba(80,208,144,.1); color: var(--grn); }
+.badge-err { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-family: var(--mono); background: rgba(240,96,96,.1); color: var(--red); }
+.sql-box { width: 100%; background: var(--bg); border: 1px solid var(--b2); border-radius: 8px; padding: 10px; color: var(--t2); font-family: var(--mono); font-size: 11px; resize: vertical; height: 200px; outline: none; }
 
-/* GANANCIAS */
-.gan-content{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px;}
-.month-tabs{display:flex;gap:6px;flex-wrap:wrap;}
-.mtab{padding:5px 12px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--border2);background:none;color:var(--text2);transition:all .15s;font-family:var(--mono);}
-.mtab:hover,.mtab.active{background:var(--accent-dim);color:var(--accent);border-color:transparent;}
-.gan-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text3);}
-.gan-empty .ico{font-size:36px;margin-bottom:4px;}
+/* ── MODAL ────────────────────────────────────────── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 300; display: none; align-items: center; justify-content: center; padding: 20px; }
+.modal-overlay.on { display: flex; }
+.modal-box { background: var(--s1); border: 1px solid var(--b2); border-radius: 16px; padding: 24px; width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 14px; }
+.modal-box h3 { font-size: 15px; font-weight: 600; }
+.modal-btns { display: flex; gap: 8px; }
+.modal-btns .btn { flex: 1; justify-content: center; }
 
-/* SETUP */
-.setup-content{flex:1;overflow-y:auto;padding:24px 20px;}
-.setup-section{max-width:500px;display:flex;flex-direction:column;gap:16px;}
-.setup-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px;}
-.setup-card h3{font-size:14px;font-weight:500;}
-.setup-card p{font-size:12px;color:var(--text2);line-height:1.6;}
-.setup-card a{color:var(--accent);text-decoration:none;}
-.setup-card a:hover{text-decoration:underline;}
-.field{display:flex;flex-direction:column;gap:5px;}
-.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:10px;font-family:var(--mono);}
-.badge-ok{background:var(--green-dim);color:var(--green);}
-.badge-warn{background:var(--red-dim);color:var(--red);}
-.setup-steps{counter-reset:step;display:flex;flex-direction:column;gap:10px;}
-.step{counter-increment:step;display:flex;gap:10px;align-items:flex-start;font-size:12px;color:var(--text2);line-height:1.6;}
-.step::before{content:counter(step);display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--surface2);color:var(--accent);font-family:var(--mono);font-size:10px;flex-shrink:0;margin-top:1px;}
-
-/* BACKUP PANEL */
-.backup-content{flex:1;overflow-y:auto;padding:20px;}
-.backup-section{max-width:500px;display:flex;flex-direction:column;gap:16px;}
-.backup-info-box{background:var(--green-dim);border:1px solid rgba(78,203,122,0.2);border-radius:var(--r);padding:14px;font-size:12px;color:var(--green);line-height:1.6;}
-.backup-warn-box{background:var(--amber-dim);border:1px solid rgba(255,181,71,0.2);border-radius:var(--r);padding:14px;font-size:12px;color:var(--amber);line-height:1.6;}
-.last-backup-info{font-size:12px;color:var(--text2);font-family:var(--mono);}
-.btn-row{display:flex;gap:8px;flex-wrap:wrap;}
-.import-zone{border:2px dashed var(--border2);border-radius:var(--r);padding:24px;text-align:center;font-size:12px;color:var(--text3);cursor:pointer;transition:all .15s;}
-.import-zone:hover{border-color:var(--accent);color:var(--accent);}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
-.modal-box{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:24px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:14px;}
-.modal-box h3{font-size:15px;font-weight:600;}
-.modal-box input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:11px 13px;color:var(--text);font-family:var(--sans);font-size:14px;outline:none;}
-.modal-box input:focus{border-color:var(--accent);}
-.modal-btns{display:flex;gap:8px;}
-.modal-btns button{flex:1;padding:10px;border-radius:8px;font-size:13px;font-family:var(--sans);font-weight:500;cursor:pointer;border:1px solid var(--border2);}
-.modal-confirm{background:var(--accent);color:#0f0f0f;border-color:transparent;}
-.modal-cancel{background:none;color:var(--text2);}
-
-@media(max-width:640px){
-  /* Layout */
-  #app.show{grid-template-columns:1fr;grid-template-rows:1fr auto;}
-
-  /* Sidebar becomes bottom nav bar */
-  .sidebar{
-    order:2;
-    flex-direction:row;
-    height:62px;
-    border-right:none;
-    border-top:1px solid var(--border);
-    padding:0;
-    overflow:visible;
-  }
-  .logo{display:none;}
-  .clients-section{display:none;}
-
-  /* Bottom nav */
-  .nav{
-    flex-direction:row;
-    padding:0;
-    border-bottom:none;
-    width:100%;
-    gap:0;
-    justify-content:space-around;
-    align-items:stretch;
-  }
-  .nav-btn{
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    gap:3px;
-    padding:8px 4px 10px;
-    border-radius:0;
-    font-size:10px;
-    flex:1;
-    height:100%;
-  }
-  .nav-btn.active{
-    background:none;
-    color:var(--accent);
-    border-bottom:2px solid var(--accent);
-  }
-  .nav-icon{font-size:18px;width:auto;}
-
-  /* Main area */
-  .main{order:1;overflow:hidden;}
-
-  /* Panel header */
-  .ph{padding:10px 14px;}
-  .ph-title{font-size:14px;}
-  .ph-sub{font-size:10px;}
-  .btn{padding:6px 10px;font-size:11px;}
-
-  /* Auth box */
-  .auth-box{width:92vw;padding:24px 20px;}
-
-  /* Chat */
-  .chat-msgs{padding:12px 14px;gap:8px;}
-  .bubble{font-size:13px;padding:9px 12px;}
-  .msg{max-width:88%;}
-  .chat-input-area{padding:8px 12px;}
-  .chat-textarea{font-size:14px;padding:8px 11px;}
-  .send-btn{width:38px;height:38px;}
-
-  /* Banners */
-  .backup-banner,.api-banner{font-size:11px;padding:7px 14px;}
-
-  /* Client content */
-  .client-content{padding:12px 14px;}
-  .stats-grid{grid-template-columns:repeat(3,1fr);gap:6px;}
-  .stat{padding:9px 8px;}
-  .stat-val{font-size:16px;}
-  .stat-lbl{font-size:9px;}
-
-  /* Cards */
-  .card{padding:12px;}
-  .card-title{font-size:9px;}
-
-  /* Transaction rows */
-  .tx-row{padding:8px 0;}
-  .tx-desc{font-size:12px;}
-  .tx-amt{font-size:12px;}
-
-  /* Ganancias */
-  .gan-content{padding:12px 14px;}
-
-  /* Setup */
-  .setup-content{padding:14px;}
-  .setup-card{padding:14px;}
-
-  /* Backup */
-  .backup-content{padding:12px 14px;}
-
-  /* Panel cliente header buttons */
-  .ph .btn span{display:none;}
+/* ── MOBILE ───────────────────────────────────────── */
+@media (max-width: 640px) {
+  #app.on { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+  .sidebar { order: 2; flex-direction: row; height: 60px; border-right: none; border-top: 1px solid var(--b1); overflow: visible; }
+  .sb-head, .sb-clients { display: none; }
+  .sb-nav { flex-direction: row; border: none; padding: 0; width: 100%; gap: 0; justify-content: space-around; align-items: stretch; }
+  .nav-btn { flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 8px 4px 10px; border-radius: 0; font-size: 10px; flex: 1; height: 100%; }
+  .nav-btn.on { background: none; color: var(--acc); border-bottom: 2px solid var(--acc); }
+  .nav-icon { font-size: 18px; }
+  .main { order: 1; }
+  .ph { padding: 10px 14px; }
+  .chat-msgs, .client-body, .gan-body, .backup-body { padding: 12px 14px; }
+  .chat-input-wrap { padding: 8px 12px; }
 }
 </style>
 </head>
 <body>
 
 <!-- AUTH -->
-<div id="authScreen">
-  <div class="auth-box">
+<div id="authWrap">
+  <div class="auth-card">
     <div class="auth-logo">
-      <div class="mark">COBRANZAS IA</div>
+      <div class="tag">Cobranzas IA</div>
       <h1>Gestión inteligente</h1>
       <p>Controlá deudas, pagos y ganancias</p>
     </div>
     <div class="auth-tabs">
-      <button class="auth-tab active" onclick="switchAuth('login')">Iniciar sesión</button>
-      <button class="auth-tab" onclick="switchAuth('signup')">Registrarse</button>
+      <button class="auth-tab on" onclick="setAuthMode('login')">Iniciar sesión</button>
+      <button class="auth-tab" onclick="setAuthMode('signup')">Registrarse</button>
     </div>
-    <div class="auth-form">
-      <div class="field">
-        <div class="field-label">Email</div>
-        <input type="email" id="authEmail" placeholder="tu@email.com" />
-      </div>
-      <div class="field">
-        <div class="field-label">Contraseña</div>
-        <input type="password" id="authPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAuth()" />
-      </div>
-      <div class="auth-error" id="authError"></div>
-      <button class="btn-full" id="authBtn" onclick="doAuth()">Entrar</button>
-    </div>
+    <div class="field"><label>Email</label><input type="email" id="aEmail" placeholder="tu@email.com"></div>
+    <div class="field"><label>Contraseña</label><input type="password" id="aPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAuth()"></div>
+    <div class="err-msg" id="aErr"></div>
+    <button class="btn-primary" id="aBtn" onclick="doAuth()">Entrar</button>
   </div>
 </div>
 
 <!-- APP -->
 <div id="app">
   <div class="sidebar">
-    <div class="logo">
-      <div class="mark">⬡ COBRANZAS IA</div>
+    <div class="sb-head">
+      <div class="tag">⬡ Cobranzas IA</div>
       <h2>Dashboard</h2>
-      <div class="user-pill">
+      <div class="user-row">
         <div class="user-dot"></div>
-        <div class="user-email" id="userEmail"></div>
+        <div class="user-email" id="uEmail"></div>
         <button class="logout-btn" onclick="logout()">salir</button>
       </div>
     </div>
-    <div class="nav">
-      <button class="nav-btn active" data-panel="chat" onclick="showPanel('chat',this)">
-        <span class="nav-icon">💬</span> Chat IA
-      </button>
-      <button class="nav-btn" data-panel="clientes-mobile" onclick="showPanel('clientes-mobile',this)">
-        <span class="nav-icon">👥</span> Clientes
-      </button>
-      <button class="nav-btn" data-panel="ganancias" onclick="showPanel('ganancias',this)">
-        <span class="nav-icon">📈</span> Ganancias
-      </button>
-      <button class="nav-btn" data-panel="backup" onclick="showPanel('backup',this)">
-        <span class="nav-icon">🛡️</span> Respaldos
-      </button>
-      <button class="nav-btn" data-panel="setup" onclick="showPanel('setup',this)">
-        <span class="nav-icon">⚙️</span> Configuración
-      </button>
+    <div class="sb-nav">
+      <button class="nav-btn on" data-p="chat" onclick="showPanel('chat',this)"><span class="nav-icon">💬</span> Chat IA</button>
+      <button class="nav-btn" data-p="clientes" onclick="showPanel('clientes',this)"><span class="nav-icon">👥</span> Clientes</button>
+      <button class="nav-btn" data-p="ganancias" onclick="showPanel('ganancias',this)"><span class="nav-icon">📈</span> Ganancias</button>
+      <button class="nav-btn" data-p="backup" onclick="showPanel('backup',this)"><span class="nav-icon">🛡️</span> Respaldos</button>
+      <button class="nav-btn" data-p="config" onclick="showPanel('config',this)"><span class="nav-icon">⚙️</span> Config</button>
     </div>
-    <div class="clients-section">
-      <div class="sec-label">Clientes</div>
-      <div class="client-list" id="clientList">
-        <div class="no-clients">Aún no hay clientes.<br>Escribí en el chat para agregar.</div>
-      </div>
+    <div class="sb-clients">
+      <div class="sb-label">Clientes</div>
+      <div class="client-list" id="clientList"><div class="no-clients">Sin clientes aún</div></div>
     </div>
   </div>
 
   <div class="main">
+
     <!-- CHAT -->
-    <div class="panel active" id="panel-chat">
-      <div class="ph">
-        <div class="ph-info">
-          <div class="ph-title">Chat con IA</div>
-          <div class="ph-sub" id="chatUserSub">Escribí como por WhatsApp</div>
-        </div>
-      </div>
-      <div id="backupBanner" class="backup-banner warn" onclick="showPanel('backup',document.querySelector('[data-panel=backup]'))">
-        🛡️ <strong>Hace más de 7 días que no respaldás.</strong> Tocá acá para hacer un respaldo ahora →
-      </div>
-      <div id="apiBanner" class="api-banner" onclick="showPanel('setup',document.querySelector('[data-panel=setup]'))">
-        ⚠️ Configurá tu API key de Claude para activar el chat inteligente →
-      </div>
+    <div class="panel on" id="panel-chat">
+      <div class="ph"><div class="ph-info"><div class="ph-title">Chat con IA</div><div class="ph-sub">Escribí como por WhatsApp</div></div></div>
+      <div class="api-warn" id="apiWarn" onclick="showPanel('config',document.querySelector('[data-p=config]'))">⚠️ Configurá tu API key de Claude para activar el chat →</div>
       <div class="chat-msgs" id="chatMsgs">
-        <div class="msg msg-ai">
-          <div class="bubble">Hola! 👋 Soy tu asistente de cobranzas.<br><br>
-          Ejemplos de lo que podés escribirme:<br><br>
-          📋 <b>"Ramiro debe 10000 usd"</b><br>
-          📋 <b>"agregar 2000 a la deuda de Ramiro"</b><br>
-          💰 <b>"Ramiro pagó 3000"</b><br>
-          👤 <b>"ver cuenta de Ramiro"</b><br>
-          📈 <b>"ganancia operacion Ricardo 35 usd"</b><br><br>
-          ¿Con qué arrancamos?</div>
-          <div class="msg-time">ahora</div>
-        </div>
+        <div class="msg msg-ai"><div class="bubble">Hola 👋 Soy tu asistente de cobranzas.<br><br>
+        Ejemplos:<br>
+        📋 <b>"Laupa me debe 1000 usd por cambio"</b><br>
+        📋 <b>"le debo 50000 pesos a Laupa"</b><br>
+        💰 <b>"Laupa me pagó 500 usd"</b><br>
+        💰 <b>"le pagué 20000 pesos a Laupa"</b><br>
+        📈 <b>"ganancia operacion Pedro 35 usd"</b><br>
+        👤 <b>"ver cuenta de Laupa"</b><br><br>
+        ¿Con qué arrancamos?</div><div class="msg-time">ahora</div></div>
       </div>
-      <div class="chat-input-area">
-        <textarea class="chat-textarea" id="chatInput" placeholder="Escribí acá..." rows="1"
-          onkeydown="handleChatKey(event)" oninput="autoResize(this)"></textarea>
-        <button class="send-btn" id="sendBtn" onclick="sendChat()">
-          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </button>
+      <div class="chat-input-wrap">
+        <textarea class="chat-ta" id="chatInput" placeholder="Escribí acá..." rows="1" onkeydown="handleKey(event)" oninput="autoH(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendChat()">↑</button>
       </div>
     </div>
 
     <!-- CLIENTES MOBILE -->
-    <div class="panel" id="panel-clientes-mobile">
+    <div class="panel" id="panel-clientes">
       <div class="ph">
-        <div class="ph-info">
-          <div class="ph-title">Clientes</div>
-          <div class="ph-sub" id="clientesMobileSub">Tocá un cliente para ver su cuenta</div>
-        </div>
-        <button class="btn btn-accent" onclick="showAddClientDialog()">+ Nuevo</button>
+        <div class="ph-info"><div class="ph-title">Clientes</div><div class="ph-sub" id="cliSub">Tus clientes</div></div>
+        <button class="btn btn-acc" onclick="openAddClient()">+ Nuevo</button>
       </div>
-      <div style="padding:10px 16px 0;" id="clientesTotalSummary"></div>
-      <div style="flex:1;overflow-y:auto;padding:8px 16px;display:flex;flex-direction:column;gap:6px;" id="clientesMobileList">
-        <div class="no-clients" style="padding:40px 0;text-align:center;color:var(--text3);">Aún no hay clientes.<br>Tocá + Nuevo para agregar.</div>
-      </div>
+      <div class="client-list" style="padding:10px 16px;overflow-y:auto;flex:1;" id="clientListMobile"><div class="no-clients">Sin clientes aún</div></div>
     </div>
 
-    <!-- CLIENTE -->
+    <!-- CLIENTE DETAIL -->
     <div class="panel" id="panel-cliente">
       <div class="ph">
-        <div class="ph-info">
-          <div class="ph-title" id="clientPanelName">Cliente</div>
-          <div class="ph-sub" id="clientPanelSub"></div>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn" onclick="downloadHistory()">⬇ Historial</button>
-          <button class="btn" style="color:var(--red);" onclick="deleteClient()">🗑</button>
-          <button class="btn" onclick="window.innerWidth<641?showPanel('clientes-mobile',document.querySelector('[data-panel=clientes-mobile]')):showPanel('chat',document.querySelector('[data-panel=chat]'))">← Volver</button>
+        <div class="ph-info"><div class="ph-title" id="cliName">Cliente</div><div class="ph-sub" id="cliSub2">Saldos por moneda</div></div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn" onclick="downloadPDF()">⬇ PDF</button>
+          <button class="btn btn-red" onclick="deleteClient()">🗑</button>
+          <button class="btn" onclick="goBack()">← Volver</button>
         </div>
       </div>
-      <div class="client-content" id="clientContent"></div>
+      <div class="client-body" id="clientBody"></div>
     </div>
 
     <!-- GANANCIAS -->
     <div class="panel" id="panel-ganancias">
-      <div class="ph">
-        <div class="ph-info">
-          <div class="ph-title">Ganancias</div>
-          <div class="ph-sub" id="ganSub">Resumen mensual</div>
-        </div>
-      </div>
-      <div class="gan-content" id="ganContent">
-        <div class="gan-empty"><div class="ico">📈</div><div>No hay ganancias registradas todavía</div><div style="font-size:11px;margin-top:4px;">Escribí: "ganancia operacion Pedro 35 usd"</div></div>
-      </div>
+      <div class="ph"><div class="ph-info"><div class="ph-title">Ganancias</div><div class="ph-sub">Por mes y moneda</div></div></div>
+      <div class="gan-body" id="ganBody"><div class="no-clients" style="padding:40px;">Sin ganancias aún.<br>Escribí: "ganancia operacion Pedro 35 usd"</div></div>
     </div>
 
     <!-- BACKUP -->
     <div class="panel" id="panel-backup">
-      <div class="ph">
-        <div class="ph-info">
-          <div class="ph-title">Respaldos</div>
-          <div class="ph-sub" id="backupLastInfo">Cargando...</div>
+      <div class="ph"><div class="ph-info"><div class="ph-title">Respaldos</div><div class="ph-sub" id="backupSub">Exportar e importar datos</div></div></div>
+      <div class="backup-body">
+        <div class="backup-warn" id="backupWarn" onclick="showPanel('backup',document.querySelector('[data-p=backup]'))">🛡️ Hacé un respaldo periódicamente para no perder datos</div>
+        <div class="card">
+          <div class="card-title">Exportar respaldo</div>
+          <p style="font-size:12px;color:var(--t2);margin-bottom:12px;">Descargá un JSON con todos tus datos. Guardalo en Google Drive o donde quieras.</p>
+          <button class="btn btn-acc" onclick="exportBackup()">⬇ Descargar respaldo</button>
+          <div id="expStatus" style="font-size:11px;color:var(--t3);margin-top:8px;font-family:var(--mono);"></div>
         </div>
-      </div>
-      <div class="backup-content">
-        <div class="backup-section">
-
-          <div id="backupStatusBox" class="backup-info-box">
-            ✅ Tus datos están en Supabase y no se pierden solos. Este respaldo es una copia extra tuya, por si querés tenerla guardada en tu computadora o enviársela a alguien.
-          </div>
-
-          <div class="setup-card">
-            <h3>⬇ Exportar respaldo</h3>
-            <p>Descargá un archivo JSON con todos tus clientes, movimientos y ganancias. Guardalo en Google Drive, tu compu o donde quieras.</p>
-            <div class="btn-row">
-              <button class="btn btn-accent" onclick="exportBackup()">⬇ Descargar respaldo ahora</button>
-            </div>
-            <div id="exportStatus" style="font-size:11px;color:var(--text3);font-family:var(--mono);"></div>
-          </div>
-
-          <div class="setup-card">
-            <h3>⬆ Importar respaldo</h3>
-            <p>Si perdiste acceso a Supabase o querés restaurar datos desde un archivo de respaldo anterior.</p>
-            <div class="import-zone" onclick="document.getElementById('importFile').click()">
-              📂 Tocá acá para seleccionar un archivo .json de respaldo
-              <input type="file" id="importFile" accept=".json" style="display:none" onchange="importBackup(event)" />
-            </div>
-            <div id="importStatus" style="font-size:12px;color:var(--text2);"></div>
-          </div>
-
-          <div class="setup-card">
-            <h3>📅 Historial de respaldos</h3>
-            <p>Los últimos respaldos que hiciste desde este navegador.</p>
-            <div id="backupHistory" style="font-size:12px;color:var(--text3);font-family:var(--mono);">Cargando...</div>
-          </div>
-
+        <div class="card">
+          <div class="card-title">Importar respaldo</div>
+          <p style="font-size:12px;color:var(--t2);margin-bottom:12px;">Restaurá tus datos desde un archivo de respaldo anterior.</p>
+          <div class="import-zone" onclick="document.getElementById('impFile').click()">📂 Seleccioná un archivo .json de respaldo<input type="file" id="impFile" accept=".json" style="display:none" onchange="importBackup(event)"></div>
+          <div id="impStatus" style="font-size:12px;color:var(--t2);margin-top:8px;"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Historial de respaldos</div>
+          <div id="backupHist" style="font-size:12px;color:var(--t3);font-family:var(--mono);">Sin respaldos registrados</div>
         </div>
       </div>
     </div>
 
-    <!-- SETUP -->
-    <div class="panel" id="panel-setup">
-      <div class="ph">
-        <div class="ph-info">
-          <div class="ph-title">Configuración</div>
-          <div class="ph-sub">API key y base de datos</div>
+    <!-- CONFIG -->
+    <div class="panel" id="panel-config">
+      <div class="ph"><div class="ph-info"><div class="ph-title">Configuración</div><div class="ph-sub">API key y base de datos</div></div></div>
+      <div class="config-body">
+        <div class="card">
+          <div class="card-title">API Key de Claude</div>
+          <p style="font-size:12px;color:var(--t2);margin-bottom:12px;">Se guarda solo en tu navegador. Obtené la tuya en <a href="https://console.anthropic.com" target="_blank" style="color:var(--acc);">console.anthropic.com</a></p>
+          <div class="field"><label>API Key</label>
+            <div style="display:flex;gap:6px;"><input type="password" id="apiKeyIn" placeholder="sk-ant-..."><button class="btn" onclick="saveApiKey()">Guardar</button></div>
+          </div>
+          <div id="apiKeyStatus" style="margin-top:6px;"></div>
         </div>
-      </div>
-      <div class="setup-content">
-        <div class="setup-section">
-          <div class="setup-card">
-            <h3>🤖 API Key de Claude</h3>
-            <p>Necesitás una API key de Anthropic para que el chat funcione con IA real. Se guarda solo en tu navegador, nunca se sube a ningún servidor.</p>
-            <div class="field">
-              <div class="field-label">API Key</div>
-              <div style="display:flex;gap:6px;">
-                <input type="password" id="apiKeyInput" placeholder="sk-ant-..." style="flex:1;" />
-                <button class="btn" onclick="saveApiKey()">Guardar</button>
-              </div>
-            </div>
-            <div id="apiKeyStatus"></div>
-            <p>Obtené tu key en <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys</p>
-          </div>
-
-          <div class="setup-card">
-            <h3>🗄️ Base de datos (Supabase)</h3>
-            <p>Supabase guarda todos los datos en la nube y separa los datos de cada usuario automáticamente.</p>
-            <div class="setup-steps">
-              <div class="step">Creá cuenta gratis en <a href="https://supabase.com" target="_blank">supabase.com</a> y creá un proyecto nuevo.</div>
-              <div class="step">En el proyecto andá a <b>SQL Editor</b> y ejecutá el SQL de abajo.</div>
-              <div class="step">Andá a <b>Settings → API</b> y copiá la URL y la anon key.</div>
-              <div class="step">Pegalas acá y guardá. ¡Listo!</div>
-            </div>
-            <div class="field">
-              <div class="field-label">Supabase URL</div>
-              <input type="text" id="sbUrl" placeholder="https://xxxx.supabase.co" />
-            </div>
-            <div class="field">
-              <div class="field-label">Supabase Anon Key</div>
-              <input type="text" id="sbKey" placeholder="eyJ..." />
-            </div>
-            <button class="btn btn-accent" onclick="saveSupabase()">Guardar y conectar</button>
-            <div id="sbStatus"></div>
-          </div>
-
-          <div class="setup-card">
-            <h3>📋 SQL para Supabase</h3>
-            <p>Copiá esto y ejecutalo en el SQL Editor de tu proyecto:</p>
-            <textarea id="sqlText" style="width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px;color:var(--text2);font-family:var(--mono);font-size:11px;resize:vertical;height:220px;outline:none;" readonly>-- Tabla de clientes
+        <div class="card">
+          <div class="card-title">Base de datos (Supabase)</div>
+          <p style="font-size:12px;color:var(--t2);margin-bottom:12px;">Crea tu proyecto gratis en <a href="https://supabase.com" target="_blank" style="color:var(--acc);">supabase.com</a> y copiá la URL y Anon Key desde Settings → API</p>
+          <div class="field"><label>Project URL</label><input type="text" id="sbUrlIn" placeholder="https://xxxx.supabase.co"></div>
+          <div class="field"><label>Anon Key</label><input type="text" id="sbKeyIn" placeholder="eyJ..."></div>
+          <button class="btn btn-acc" onclick="saveSupabase()" style="margin-top:4px;">Guardar y conectar</button>
+          <div id="sbStatus" style="margin-top:6px;"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">SQL para Supabase (ejecutalo una vez)</div>
+          <textarea class="sql-box" readonly>-- Tabla clientes
 create table clients (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users not null,
   name text not null,
-  balance numeric default 0,
   created_at timestamptz default now()
 );
 alter table clients enable row level security;
-create policy "own clients" on clients using (auth.uid() = user_id);
+create policy "own" on clients using (auth.uid() = user_id);
 
--- Tabla de movimientos
+-- Tabla movimientos (con moneda)
 create table movements (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users not null,
   client_id uuid references clients,
   type text not null,
   amount numeric not null,
+  currency text default 'USD',
   note text,
   created_at timestamptz default now()
 );
 alter table movements enable row level security;
-create policy "own movements" on movements using (auth.uid() = user_id);
+create policy "own" on movements using (auth.uid() = user_id);
 
--- Tabla de ganancias
+-- Tabla ganancias (con moneda)
 create table ganancias (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users not null,
   amount numeric not null,
   description text,
+  currency text default 'USD',
   month_key text,
   created_at timestamptz default now()
 );
 alter table ganancias enable row level security;
-create policy "own ganancias" on ganancias using (auth.uid() = user_id);</textarea>
-            <button class="btn" onclick="copySQL()">📋 Copiar SQL</button>
-          </div>
+create policy "own" on ganancias using (auth.uid() = user_id);</textarea>
+          <button class="btn" onclick="copySql()" style="margin-top:8px;">📋 Copiar SQL</button>
         </div>
       </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL NUEVO CLIENTE -->
+<div class="modal-overlay" id="addClientModal">
+  <div class="modal-box">
+    <h3>+ Nuevo cliente</h3>
+    <div class="field"><label>Nombre</label><input type="text" id="newCliName" placeholder="Nombre del cliente" onkeydown="if(event.key==='Enter')confirmAddClient()"></div>
+    <div class="err-msg" id="newCliErr"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('addClientModal')">Cancelar</button>
+      <button class="btn btn-acc" onclick="confirmAddClient()">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR MONTO -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal-box">
+    <h3>✏️ Editar monto</h3>
+    <div class="field"><label>Nuevo monto</label><input type="text" id="editAmount" placeholder="0.00" onkeydown="if(event.key==='Enter')confirmEdit()"></div>
+    <div class="err-msg" id="editErr"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('editModal')">Cancelar</button>
+      <button class="btn btn-acc" onclick="confirmEdit()">Guardar</button>
     </div>
   </div>
 </div>
 
 <script>
-// ─── STATE ────────────────────────────────────────────────────────────
-let sbClient = null;
-let currentUser = null;
-let clientsCache = [];
-let gananciasCache = [];
-let selectedClientId = null;
+// ── STATE ─────────────────────────────────────────────────────────────
+let db = null, user = null;
+let clients = [], ganancias = [];
+let selClientId = null;
+let editTarget = null; // {movId, clientId}
+let authMode = 'login';
 
-// ─── STORAGE HELPERS ─────────────────────────────────────────────────
-const S = { get: k=>localStorage.getItem(k)||'', set: (k,v)=>localStorage.setItem(k,v) };
-const getApiKey = ()=>S.get('cbr_api_key');
-const getSupabaseUrl = ()=>S.get('cbr_sb_url');
-const getSupabaseKey = ()=>S.get('cbr_sb_key');
+// ── STORAGE ───────────────────────────────────────────────────────────
+const LS = { g: k => localStorage.getItem(k)||'', s: (k,v) => localStorage.setItem(k,v) };
+const getApiKey = () => LS.g('cbr_api');
+const getSbUrl = () => LS.g('cbr_url');
+const getSbKey = () => LS.g('cbr_key');
 
-// ─── BACKUP LOGIC ─────────────────────────────────────────────────────
-function getLastBackupDate(){ return S.get('cbr_last_backup'); }
-function setLastBackupDate(){ S.set('cbr_last_backup', new Date().toISOString()); }
-
-function getBackupHistory(){
-  try { return JSON.parse(localStorage.getItem('cbr_backup_history')||'[]'); } catch(e){ return []; }
-}
-function addToBackupHistory(filename){
-  const h = getBackupHistory();
-  h.unshift({ date: new Date().toISOString(), filename });
-  if(h.length > 10) h.pop();
-  localStorage.setItem('cbr_backup_history', JSON.stringify(h));
+// ── SUPABASE INIT ─────────────────────────────────────────────────────
+function initDb() {
+  const url = getSbUrl(), key = getSbKey();
+  if (!url || !key) return false;
+  try { db = supabase.createClient(url, key); return true; } catch(e) { return false; }
 }
 
-function checkBackupBanner(){
-  const last = getLastBackupDate();
-  const banner = document.getElementById('backupBanner');
-  if(!last){
-    banner.className = 'backup-banner warn';
-    return;
-  }
-  const days = (Date.now() - new Date(last).getTime()) / (1000*60*60*24);
-  banner.className = days > 7 ? 'backup-banner warn' : 'backup-banner ok';
+// ── AUTH ──────────────────────────────────────────────────────────────
+function setAuthMode(m) {
+  authMode = m;
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('on', (i===0&&m==='login')||(i===1&&m==='signup')));
+  document.getElementById('aBtn').textContent = m === 'login' ? 'Entrar' : 'Crear cuenta';
 }
 
-function updateBackupPanel(){
-  const last = getLastBackupDate();
-  const ph = document.getElementById('backupLastInfo');
-  const statusBox = document.getElementById('backupStatusBox');
-  const histEl = document.getElementById('backupHistory');
-
-  if(!last){
-    ph.textContent = 'Nunca respaldado';
-    statusBox.className = 'backup-warn-box';
-    statusBox.textContent = '⚠️ Todavía no hiciste ningún respaldo. Tus datos están seguros en Supabase, pero te recomendamos tener una copia propia.';
-  } else {
-    const days = Math.floor((Date.now() - new Date(last).getTime()) / (1000*60*60*24));
-    ph.textContent = `Último respaldo: ${fmtDate(last)} (hace ${days===0?'hoy':days+' días'})`;
-    if(days > 7){
-      statusBox.className = 'backup-warn-box';
-      statusBox.textContent = `⚠️ Hace ${days} días que no respaldás. Te recomendamos hacer uno ahora.`;
-    } else {
-      statusBox.className = 'backup-info-box';
-      statusBox.textContent = '✅ Respaldo al día. Tus datos están seguros en Supabase y tenés una copia propia reciente.';
-    }
-  }
-
-  const h = getBackupHistory();
-  if(!h.length){ histEl.textContent = 'Sin respaldos registrados en este navegador.'; return; }
-  histEl.innerHTML = h.map(item=>
-    `<div style="padding:6px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;">
-      <span>${item.filename}</span>
-      <span style="color:var(--text3);">${fmtDate(item.date)}</span>
-    </div>`
-  ).join('');
-}
-
-async function exportBackup(){
-  const btn = document.querySelector('[onclick="exportBackup()"]');
-  btn.textContent = '⏳ Exportando...';
-  btn.disabled = true;
-
+async function doAuth() {
+  const email = document.getElementById('aEmail').value.trim();
+  const pass = document.getElementById('aPass').value;
+  const errEl = document.getElementById('aErr');
+  const btn = document.getElementById('aBtn');
+  errEl.style.display = 'none';
+  if (!email || !pass) { showAuthErr('Completá email y contraseña'); return; }
+  if (!initDb()) { showAuthErr('Configurá Supabase primero.'); enterSetupMode(); return; }
+  btn.disabled = true; btn.textContent = 'Cargando...';
   try {
-    // Fetch all movements for all clients
-    let allMovements = [];
-    if(sbClient && currentUser){
-      const {data} = await sbClient.from('movements').select('*').eq('user_id',currentUser.id).order('created_at');
-      allMovements = data||[];
-    }
-
-    const backup = {
-      version: '1.0',
-      exported_at: new Date().toISOString(),
-      user_email: currentUser?.email || 'local',
-      clients: clientsCache,
-      movements: allMovements,
-      ganancias: gananciasCache
-    };
-
-    const json = JSON.stringify(backup, null, 2);
-    const blob = new Blob([json], {type:'application/json'});
-    const dateStr = new Date().toLocaleDateString('es-AR').replace(/\//g,'-');
-    const filename = `cobranzas_respaldo_${dateStr}.json`;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.click();
-
-    setLastBackupDate();
-    addToBackupHistory(filename);
-    checkBackupBanner();
-    updateBackupPanel();
-    document.getElementById('exportStatus').textContent = `✓ Respaldo descargado: ${filename}`;
-  } catch(e){
-    document.getElementById('exportStatus').textContent = 'Error al exportar: '+e.message;
-  }
-
-  btn.textContent = '⬇ Descargar respaldo ahora';
-  btn.disabled = false;
-}
-
-async function importBackup(event){
-  const file = event.target.files[0];
-  if(!file) return;
-  const statusEl = document.getElementById('importStatus');
-  statusEl.textContent = '⏳ Leyendo archivo...';
-
-  try {
-    const text = await file.text();
-    const data = JSON.parse(text);
-
-    if(!data.version || !data.clients || !data.movements || !data.ganancias){
-      statusEl.textContent = '❌ El archivo no parece un respaldo válido de Cobranzas IA.';
-      return;
-    }
-
-    const confirm = window.confirm(
-      `¿Restaurar respaldo del ${fmtDate(data.exported_at)}?\n\n` +
-      `Clientes: ${data.clients.length}\n` +
-      `Movimientos: ${data.movements.length}\n` +
-      `Ganancias: ${data.ganancias.length}\n\n` +
-      `ATENCIÓN: Esto va a reemplazar todos los datos actuales en Supabase.`
-    );
-    if(!confirm){ statusEl.textContent = 'Importación cancelada.'; return; }
-
-    if(!sbClient || !currentUser){ statusEl.textContent = '❌ Necesitás estar conectado a Supabase para importar.'; return; }
-
-    statusEl.textContent = '⏳ Importando clientes...';
-    // Delete existing data first
-    await sbClient.from('movements').delete().eq('user_id', currentUser.id);
-    await sbClient.from('ganancias').delete().eq('user_id', currentUser.id);
-    await sbClient.from('clients').delete().eq('user_id', currentUser.id);
-
-    // Re-insert clients
-    if(data.clients.length){
-      const clients = data.clients.map(c=>({...c, user_id:currentUser.id}));
-      await sbClient.from('clients').insert(clients);
-    }
-
-    statusEl.textContent = '⏳ Importando movimientos...';
-    if(data.movements.length){
-      const movs = data.movements.map(m=>({...m, user_id:currentUser.id, currency:m.currency||'USD'}));
-      await sbClient.from('movements').insert(movs);
-    }
-
-    statusEl.textContent = '⏳ Importando ganancias...';
-    if(data.ganancias.length){
-      const gans = data.ganancias.map(g=>({...g, user_id:currentUser.id}));
-      await sbClient.from('ganancias').insert(gans);
-    }
-
-    await loadData();
-    statusEl.innerHTML = '✅ Importación completada exitosamente.';
-  } catch(e){
-    statusEl.textContent = '❌ Error al importar: '+e.message;
-  }
-  event.target.value = '';
-}
-
-// ─── SUPABASE ─────────────────────────────────────────────────────────
-function initSupabase(){
-  const url=getSupabaseUrl(), key=getSupabaseKey();
-  if(!url||!key) return false;
-  try { sbClient = supabase.createClient(url,key); return true; } catch(e){ return false; }
-}
-
-// ─── AUTH ─────────────────────────────────────────────────────────────
-let authMode='login';
-function switchAuth(m){
-  authMode=m;
-  document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&m==='login')||(i===1&&m==='signup')));
-  document.getElementById('authBtn').textContent=m==='login'?'Entrar':'Crear cuenta';
-}
-
-async function doAuth(){
-  const email=document.getElementById('authEmail').value.trim();
-  const pass=document.getElementById('authPass').value;
-  const errEl=document.getElementById('authError');
-  const btn=document.getElementById('authBtn');
-  errEl.style.display='none';
-  if(!email||!pass){showAuthErr('Completá email y contraseña');return;}
-  if(!initSupabase()){showAuthErr('Primero configurá Supabase.');showAppSetup();return;}
-  btn.disabled=true;btn.textContent='Cargando...';
-  try {
-    let res;
-    if(authMode==='login') res=await sbClient.auth.signInWithPassword({email,password:pass});
-    else res=await sbClient.auth.signUp({email,password:pass});
-    if(res.error) throw res.error;
-    currentUser=res.data.user||res.data.session?.user;
-    if(!currentUser&&authMode==='signup'){showAuthErr('Revisá tu email para confirmar la cuenta.');btn.disabled=false;btn.textContent='Crear cuenta';return;}
-    loginSuccess(currentUser.email);
-  } catch(e){
-    showAuthErr(e.message||'Error de autenticación');
-    btn.disabled=false;btn.textContent=authMode==='login'?'Entrar':'Crear cuenta';
+    const res = authMode === 'login'
+      ? await db.auth.signInWithPassword({ email, password: pass })
+      : await db.auth.signUp({ email, password: pass });
+    if (res.error) throw res.error;
+    user = res.data.user || res.data.session?.user;
+    if (!user && authMode === 'signup') { showAuthErr('Revisá tu email para confirmar.'); btn.disabled=false; btn.textContent='Crear cuenta'; return; }
+    onLogin(email);
+  } catch(e) {
+    showAuthErr(e.message || 'Error de autenticación');
+    btn.disabled = false; btn.textContent = authMode === 'login' ? 'Entrar' : 'Crear cuenta';
   }
 }
 
-function showAuthErr(msg){const e=document.getElementById('authError');e.textContent=msg;e.style.display='block';}
+function showAuthErr(msg) { const e = document.getElementById('aErr'); e.textContent = msg; e.style.display = 'block'; }
 
-function showAppSetup(){
-  document.getElementById('authScreen').style.display='none';
-  document.getElementById('app').classList.add('show');
-  document.getElementById('userEmail').textContent='configurar primero';
-  showPanel('setup',document.querySelector('[data-panel=setup]'));
-  updateApiBanner();
+function enterSetupMode() {
+  document.getElementById('authWrap').style.display = 'none';
+  document.getElementById('app').classList.add('on');
+  document.getElementById('uEmail').textContent = 'configurar primero';
+  showPanel('config', document.querySelector('[data-p=config]'));
+  loadConfigInputs();
 }
 
-function loginSuccess(email){
-  document.getElementById('authScreen').style.display='none';
-  document.getElementById('app').classList.add('show');
-  document.getElementById('userEmail').textContent=email;
-  document.getElementById('apiKeyInput').value=getApiKey();
-  document.getElementById('sbUrl').value=getSupabaseUrl();
-  document.getElementById('sbKey').value=getSupabaseKey();
-  const subEl=document.getElementById('chatUserSub');
-  if(subEl) subEl.textContent=email;
-  updateApiBanner();
-  checkBackupBanner();
+function onLogin(email) {
+  document.getElementById('authWrap').style.display = 'none';
+  document.getElementById('app').classList.add('on');
+  document.getElementById('uEmail').textContent = email;
+  loadConfigInputs();
+  updateApiWarn();
   loadData();
 }
 
-async function logout(){
-  if(sbClient) await sbClient.auth.signOut();
+async function logout() {
+  if (db) await db.auth.signOut();
   location.reload();
 }
 
-// ─── DATA ─────────────────────────────────────────────────────────────
-async function loadData(){
-  if(!sbClient||!currentUser){renderClientList();return;}
-  const {data:cl}=await sbClient.from('clients').select('*').eq('user_id',currentUser.id).order('name');
-  clientsCache=cl||[];
-  const {data:gn}=await sbClient.from('ganancias').select('*').eq('user_id',currentUser.id).order('created_at');
-  gananciasCache=gn||[];
+// ── DATA ──────────────────────────────────────────────────────────────
+async function loadData() {
+  if (!db || !user) { renderClientList(); return; }
+  const [cl, gn] = await Promise.all([
+    db.from('clients').select('*').eq('user_id', user.id).order('name'),
+    db.from('ganancias').select('*').eq('user_id', user.id).order('created_at')
+  ]);
+  clients = cl.data || [];
+  ganancias = gn.data || [];
   renderClientList();
 }
 
-async function upsertClient(name){
-  const existing=clientsCache.find(c=>c.name.toLowerCase()===name.toLowerCase());
-  if(existing) return existing;
-  if(!sbClient||!currentUser) return {id:'local_'+Date.now(),name,balance:0};
-  const {data,error}=await sbClient.from('clients').insert({user_id:currentUser.id,name,balance:0}).select().single();
-  if(error) throw error;
-  clientsCache.push(data);
-  return data;
+async function getMovements(clientId) {
+  if (!db || !user) return [];
+  const { data } = await db.from('movements').select('*').eq('client_id', clientId).order('created_at');
+  return data || [];
 }
 
-async function addMovement(clientId,type,amount,note,currency='USD'){
-  if(!sbClient||!currentUser) return;
-  await sbClient.from('movements').insert({user_id:currentUser.id,client_id:clientId,type,amount,note,currency});
+async function addMovement(clientId, type, amount, currency, note) {
+  if (!db || !user) return;
+  await db.from('movements').insert({ user_id: user.id, client_id: clientId, type, amount, currency: currency||'USD', note: note||'' });
 }
 
-async function updateClientBalance(clientId,newBalance){
-  if(!sbClient||!currentUser) return;
-  await sbClient.from('clients').update({balance:newBalance}).eq('id',clientId);
-  const c=clientsCache.find(x=>x.id===clientId);
-  if(c) c.balance=newBalance;
+async function addGanancia(amount, desc, currency) {
+  const monthKey = new Date().toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+  if (!db || !user) { ganancias.push({ amount, description: desc, currency: currency||'USD', month_key: monthKey, created_at: new Date().toISOString() }); return; }
+  const { data } = await db.from('ganancias').insert({ user_id: user.id, amount, description: desc, currency: currency||'USD', month_key: monthKey }).select().single();
+  if (data) ganancias.push(data);
 }
 
-async function addGanancia(amount,desc,currency='USD'){
-  const monthKey=new Date().toLocaleDateString('es-AR',{month:'long',year:'numeric'});
-  if(!sbClient||!currentUser){gananciasCache.push({amount,description:desc,month_key:monthKey,currency,created_at:new Date().toISOString()});return;}
-  const {data,error}=await sbClient.from('ganancias').insert({user_id:currentUser.id,amount,description:desc,month_key:monthKey,currency}).select().single();
-  if(error) console.error('Ganancia error:',error);
-  if(data) gananciasCache.push(data);
-}
-
-async function getClientMovements(clientId){
-  if(!sbClient||!currentUser) return [];
-  const {data}=await sbClient.from('movements').select('*').eq('client_id',clientId).order('created_at');
-  return data||[];
-}
-
-// ─── RENDER ───────────────────────────────────────────────────────────
-function renderClientList(){
-  // Calculate totals per currency across all clients
-  // balance > 0 means client owes you, balance < 0 means you owe client
-  // But since we now track per-currency, we need to load movements... 
-  // For now use a simple summary from clientsCache balance field
-  const totalTeDebenClients = clientsCache.filter(c=>c.balance>0);
-  const totalLeDebésClients = clientsCache.filter(c=>c.balance<0);
-
-  const summaryHTML = clientsCache.length ? `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:4px;font-size:11px;">
-      <div style="color:var(--text3);font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Resumen general</div>
-      <div style="display:flex;gap:8px;">
-        <div style="flex:1;background:var(--green-dim);border-radius:6px;padding:6px;text-align:center;">
-          <div style="color:var(--text3);font-size:9px;">Te deben</div>
-          <div style="color:var(--green);font-weight:600;">${totalTeDebenClients.length} cliente${totalTeDebenClients.length!==1?'s':''}</div>
-        </div>
-        <div style="flex:1;background:var(--red-dim);border-radius:6px;padding:6px;text-align:center;">
-          <div style="color:var(--text3);font-size:9px;">Les debés</div>
-          <div style="color:var(--red);font-weight:600;">${totalLeDebésClients.length} cliente${totalLeDebésClients.length!==1?'s':''}</div>
-        </div>
-        <div style="flex:1;background:var(--surface2);border-radius:6px;padding:6px;text-align:center;">
-          <div style="color:var(--text3);font-size:9px;">Al día</div>
-          <div style="color:var(--text2);font-weight:600;">${clientsCache.filter(c=>c.balance===0).length}</div>
-        </div>
-      </div>
-    </div>` : '';
-
-  const summaryEl = document.getElementById('clientesTotalSummary');
-  if(summaryEl) summaryEl.innerHTML = summaryHTML;
-
-  const el=document.getElementById('clientList');
-  const elM=document.getElementById('clientesMobileList');
-  const html = clientsCache.length ? clientsCache.map(c=>`
-    <div class="client-row${selectedClientId===c.id?' active':''}" onclick="openClient('${c.id}')">
-      <div class="cr-name">${c.name}</div>
-      <div style="margin-top:3px;">
-        <div style="font-size:10px;color:var(--text2);font-family:var(--mono);">
-          ${c.balance>0?'Te debe':c.balance<0?'Le debés':'Al día ✓'}
-        </div>
-      </div>
-    </div>`).join('') : '<div class="no-clients">Aún no hay clientes.</div>';
-  if(el) el.innerHTML=html;
-  if(elM) elM.innerHTML=html;
-  const sub=document.getElementById('clientesMobileSub');
-  if(sub) sub.textContent=clientsCache.length?`${clientsCache.length} cliente${clientsCache.length!==1?'s':''}`:'Tocá + Nuevo para agregar';
-}
-
-async function openClient(id){
-  selectedClientId=id;
-  renderClientList();
-  const c=clientsCache.find(x=>x.id===id);
-  if(!c) return;
-  document.getElementById('clientPanelName').textContent=c.name;
-  document.getElementById('clientPanelSub').textContent=c.balance>0?'Te debe (ver saldos por moneda)':c.balance<0?'Le debés (ver saldos por moneda)':'Al día ✓';
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('panel-cliente').classList.add('active');
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-
-  const movs=await getClientMovements(id);
-  // Usar el balance de Supabase como fuente de verdad
-  // balance > 0 = el cliente te debe a vos
-  // balance < 0 = vos le debés al cliente
-  const bal = Number(c.balance);
-  const elMeDebeATi = bal > 0 ? bal : 0;
-  const yoLeDeboCli = bal < 0 ? Math.abs(bal) : 0;
-
-  // Agrupar movimientos por moneda
-  const currencies = {};
-  movs.forEach(m=>{
-    const cur = m.currency||'USD';
-    if(!currencies[cur]) currencies[cur]={balance:0};
+// ── BALANCE CALCULATION (always from movements) ───────────────────────
+// Returns { USD: 1000, ARS: -50000, USDT: 200, ... }
+function calcBalances(movs) {
+  const bal = {};
+  movs.forEach(m => {
+    const cur = m.currency || 'USD';
+    if (!bal[cur]) bal[cur] = 0;
     const amt = Number(m.amount);
-    if(m.type==='deuda_cliente'||m.type==='deuda') currencies[cur].balance+=amt;
-    else if(m.type==='deuda_yo') currencies[cur].balance-=amt;
-    else if(m.type==='pago_cliente'||m.type==='pago') currencies[cur].balance-=amt;
-    else if(m.type==='pago_yo') currencies[cur].balance+=amt;
+    if (m.type === 'deuda_cliente') bal[cur] += amt;      // cliente te debe → sube
+    else if (m.type === 'deuda_yo') bal[cur] -= amt;       // vos le debés → baja
+    else if (m.type === 'pago_cliente') bal[cur] -= amt;   // cliente pagó → baja
+    else if (m.type === 'pago_yo') bal[cur] += amt;        // vos pagaste deuda → sube
   });
-
-  const curSymbol = cur => cur==='ARS'?'$ARS':cur==='USDT'?'USDT':cur==='EUR'?'€':cur==='BRL'?'R$':'USD';
-
-  const currencyCards = Object.entries(currencies).map(([cur,data])=>{
-    const b = data.balance;
-    const label = b>0?`${c.name} te debe`:b<0?`Le debés a ${c.name}`:'Al día ✓';
-    const sign = b>0?'+':b<0?'-':'';
-    return `<div style="background:var(--bg);border-radius:8px;padding:12px 10px;text-align:center;border:1px solid var(--border);min-width:0;overflow:hidden;">
-      <div style="font-size:9px;color:var(--text3);font-family:var(--mono);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;">${cur}</div>
-      <div style="font-size:${Math.abs(b)>=100000?'14px':Math.abs(b)>=10000?'16px':'20px'};font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${sign}${fmt(Math.abs(b))}</div>
-      <div style="font-size:10px;color:var(--text2);margin-top:4px;">${label}</div>
-    </div>`;
-  }).join('');
-
-  // Build one section per currency
-  const currencySections = Object.entries(currencies).map(([cur,data])=>{
-    const b = data.balance;
-    const label = b>0?`${c.name} te debe`:b<0?`Vos le debés a ${c.name}`:'Al día ✓';
-    const sign = b>0?'+':b<0?'-':'';
-    const movsByCur = [...movs].reverse().filter(m=>(m.currency||'USD')===cur);
-    const rows = movsByCur.map(m=>`
-      <div class="tx-row" id="mov-${m.id}">
-        <div style="flex:1;">
-          <div class="tx-desc">${
-            m.type==='deuda_cliente'?'📋 Te debe':
-            m.type==='deuda_yo'?'📋 Le debés vos':
-            m.type==='pago_cliente'?'💰 Te pagó':
-            m.type==='pago_yo'?'💰 Le pagaste vos':
-            m.type==='deuda'?'📋 Deuda':'💰 Pago'
-          }</div>
-          ${m.note?`<div style="font-size:11px;color:var(--accent);margin-top:2px;font-style:italic;">📌 ${m.note}</div>`:''}
-          <div class="tx-date">${fmtDate(m.created_at)}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <div style="font-size:13px;font-weight:500;font-family:var(--mono);white-space:nowrap;color:var(--text);">${fmt(Number(m.amount))} ${cur}</div>
-          <button class="btn" style="padding:3px 7px;font-size:11px;" onclick="editMovement('${m.id}','${m.type}',${m.amount},'${id}')">✏️</button>
-          <button class="btn" style="padding:3px 7px;font-size:11px;color:var(--red);" onclick="deleteMovement('${m.id}','${m.type}',${m.amount},'${id}')">✕</button>
-        </div>
-      </div>`).join('');
-
-    return `<div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div>
-          <div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;">${cur}</div>
-          <div style="font-size:24px;font-weight:700;color:var(--text);margin-top:2px;">${sign}${fmt(Math.abs(b))}</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:2px;">${label}</div>
-        </div>
-      </div>
-      ${rows||'<div class="empty-hist">Sin movimientos</div>'}
-    </div>`;
-  }).join('');
-
-  document.getElementById('clientContent').innerHTML=`
-    ${currencySections||'<div class="card"><div class="empty-hist">Sin movimientos aún</div></div>'}
-    <button class="btn" style="color:var(--red);border-color:var(--red-dim);width:100%;justify-content:center;" onclick="resetClient('${id}')">🗑 Borrar todos los movimientos</button>
-    <div class="card">
-      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
-        <span>Historial de movimientos</span>
-        <button class="btn" style="color:var(--red);border-color:var(--red-dim);font-size:11px;padding:4px 10px;" onclick="resetClient('${id}')">🗑 Borrar todo</button>
-      </div>
-      ${!movs.length?'<div class="empty-hist">Sin movimientos aún</div>':
-        [...movs].reverse().map(m=>`
-          <div class="tx-row" id="mov-${m.id}">
-            <div style="flex:1;">
-              <div class="tx-desc">${
-                m.type==='deuda_cliente'?'📋 Te debe':
-                m.type==='deuda_yo'?'📋 Le debés vos':
-                m.type==='pago_cliente'?'💰 Te pagó':
-                m.type==='pago_yo'?'💰 Le pagaste vos':
-                m.type==='deuda'?'📋 Deuda':'💰 Pago'
-              } <span style="font-size:10px;background:var(--bg);padding:1px 6px;border-radius:10px;font-family:var(--mono);color:var(--text3);">${m.currency||'USD'}</span></div>
-              ${m.note?`<div style="font-size:11px;color:var(--accent);margin-top:2px;font-style:italic;">📌 ${m.note}</div>`:''}
-              ${m.note?`<div class="tx-note">${m.note}</div>`:''}
-              <div class="tx-date">${fmtDate(m.created_at)}</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <div style="font-size:13px;font-weight:500;font-family:var(--mono);white-space:nowrap;margin-left:12px;color:var(--text);" id="amt-${m.id}">
-                ${fmt(Number(m.amount))} ${m.currency||'USD'}
-              </div>
-              <button class="btn" style="padding:3px 7px;font-size:11px;" onclick="editMovement('${m.id}','${m.type}',${m.amount},'${id}')">✏️</button>
-              <button class="btn" style="padding:3px 7px;font-size:11px;color:var(--red);" onclick="deleteMovement('${m.id}','${m.type}',${m.amount},'${id}')">✕</button>
-            </div>
-          </div>`).join('')}
-    </div>`;
-}
-
-// Recalcula el balance desde cero sumando todos los movimientos restantes
-async function recalcBalance(clientId){
-  const movs = await getClientMovements(clientId);
-  let bal = 0;
-  movs.forEach(m=>{
-    const amt = Number(m.amount);
-    if(m.type==='deuda_cliente'||m.type==='deuda') bal += amt;
-    else if(m.type==='deuda_yo') bal -= amt;
-    else if(m.type==='pago_cliente'||m.type==='pago') bal -= amt;
-    else if(m.type==='pago_yo') bal += amt;
-  });
-  await updateClientBalance(clientId, bal);
   return bal;
 }
 
-async function deleteMovement(movId,type,amount,clientId){
-  if(!confirm('¿Borrar este movimiento?')) return;
-  if(!sbClient||!currentUser) return;
-  await sbClient.from('movements').delete().eq('id',movId);
-  await recalcBalance(clientId);
-  await openClient(clientId);
-}
-
-async function editMovement(movId,type,oldAmount,clientId){
-  const newStr=window.prompt(`Nuevo monto (actual: $${fmt(oldAmount)}):`,oldAmount);
-  if(!newStr) return;
-  const newAmt=parseFloat(newStr.replace(',','.'));
-  if(isNaN(newAmt)||newAmt<=0){window.alert('Monto inválido');return;}
-  if(!sbClient||!currentUser) return;
-  await sbClient.from('movements').update({amount:newAmt}).eq('id',movId);
-  await recalcBalance(clientId);
-  await openClient(clientId);
-}
-
-async function deleteClient(){
-  const c=clientsCache.find(x=>x.id===selectedClientId);
-  if(!c) return;
-  if(!confirm(`¿Borrar al cliente "${c.name}" y todos sus movimientos? Esto no se puede deshacer.`)) return;
-  if(!sbClient||!currentUser) return;
-  await sbClient.from('movements').delete().eq('client_id',c.id);
-  await sbClient.from('clients').delete().eq('id',c.id);
-  clientsCache=clientsCache.filter(x=>x.id!==c.id);
-  selectedClientId=null;
-  renderClientList();
-  if(window.innerWidth<641){
-    showPanel('clientes-mobile',document.querySelector('[data-panel=clientes-mobile]'));
-  } else {
-    showPanel('chat',document.querySelector('[data-panel=chat]'));
-  }
-}
-
-async function resetClient(clientId){
-  if(!confirm('¿Borrar TODOS los movimientos y poner saldo en $0? No se puede deshacer.')) return;
-  if(!sbClient||!currentUser) return;
-  await sbClient.from('movements').delete().eq('client_id',clientId);
-  await updateClientBalance(clientId,0);
-  await openClient(clientId);
-}
-function renderGanancias(){
-  const months={};
-  gananciasCache.forEach(g=>{
-    const k=g.month_key||'Sin fecha';
-    if(!months[k]) months[k]={total:0,items:[]};
-    months[k].total+=Number(g.amount);
-    months[k].items.push(g);
-  });
-  const keys=Object.keys(months);
-  if(!keys.length){
-    document.getElementById('ganContent').innerHTML='<div class="gan-empty"><div class="ico">📈</div><div>No hay ganancias registradas todavía</div><div style="font-size:11px;margin-top:4px;">Escribí en el chat: &quot;ganancia operacion Pedro 35 usd&quot;</div></div>';
+// ── CLIENT LIST ───────────────────────────────────────────────────────
+function renderClientList() {
+  const lists = [document.getElementById('clientList'), document.getElementById('clientListMobile')];
+  if (!clients.length) {
+    lists.forEach(el => { if(el) el.innerHTML = '<div class="no-clients">Sin clientes aún.<br>Agregá uno desde Clientes.</div>'; });
     return;
   }
-  renderGanMes(keys[keys.length-1],keys);
+  const html = clients.map(c => `
+    <div class="cli-row${selClientId===c.id?' on':''}" onclick="openClient('${c.id}')">
+      <div class="cli-name">${c.name}</div>
+      <div class="cli-sub">Tocá para ver saldos</div>
+    </div>`).join('');
+  lists.forEach(el => { if(el) el.innerHTML = html; });
+  document.getElementById('cliSub').textContent = `${clients.length} cliente${clients.length!==1?'s':''}`;
 }
 
-function renderGanMes(activeKey,keys){
-  const months={};
-  gananciasCache.forEach(g=>{
-    const k=g.month_key||'Sin fecha';
-    if(!months[k]) months[k]={total:0,items:[]};
-    months[k].total+=Number(g.amount);
-    months[k].items.push(g);
-  });
-  const m=months[activeKey]||{total:0,items:[]};
-  document.getElementById('ganContent').innerHTML=`
-    <div class="card">
-      <div class="card-title">Período</div>
-      <div class="month-tabs">${keys.map(k=>`<button class="mtab${k===activeKey?' active':''}" onclick="renderGanMes('${k}',${JSON.stringify(keys)})">${k}</button>`).join('')}</div>
-    </div>
-    <div class="card">
-      <div class="card-title">Totales — ${activeKey}</div>
-      <div class="stats-grid" style="grid-template-columns:1fr 1fr;">
-        <div class="stat"><div class="stat-lbl">Total del mes</div><div class="stat-val sv-green">$${fmt(m.total)}</div></div>
-        <div class="stat"><div class="stat-lbl">Operaciones</div><div class="stat-val sv-blue">${m.items.length}</div></div>
+// ── OPEN CLIENT ───────────────────────────────────────────────────────
+async function openClient(id) {
+  selClientId = id;
+  const c = clients.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('cliName').textContent = c.name;
+  document.getElementById('cliSub2').textContent = 'Saldos por moneda';
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+  document.getElementById('panel-cliente').classList.add('on');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('on'));
+  document.getElementById('clientBody').innerHTML = '<div style="padding:20px;color:var(--t3);font-size:12px;">Cargando...</div>';
+
+  const movs = await getMovements(id);
+  const balances = calcBalances(movs);
+  renderClientDetail(c, movs, balances);
+}
+
+function renderClientDetail(c, movs, balances) {
+  const allCurrencies = [...new Set(movs.map(m => m.currency || 'USD'))];
+  if (!allCurrencies.length) {
+    document.getElementById('clientBody').innerHTML = '<div class="cur-section"><div class="empty-mov">Sin movimientos aún. Cargá desde el chat.</div></div>';
+    return;
+  }
+
+  const sections = allCurrencies.map(cur => {
+    const bal = balances[cur] || 0;
+    const label = bal > 0 ? `${c.name} te debe` : bal < 0 ? `Vos le debés a ${c.name}` : 'Al día ✓';
+    const sign = bal > 0 ? '+' : '';
+    const movsByCur = [...movs].filter(m => (m.currency || 'USD') === cur).reverse();
+
+    const rows = movsByCur.map(m => {
+      const typeLabel = m.type === 'deuda_cliente' ? '📋 Te debe' :
+                        m.type === 'deuda_yo' ? '📋 Le debés vos' :
+                        m.type === 'pago_cliente' ? '💰 Te pagó' :
+                        m.type === 'pago_yo' ? '💰 Le pagaste vos' : '📋 Movimiento';
+      return `<div class="mov-row">
+        <div class="mov-left">
+          <div class="mov-type">${typeLabel}</div>
+          ${m.note ? `<div class="mov-note">📌 ${m.note}</div>` : ''}
+          <div class="mov-date">${fmtDate(m.created_at)}</div>
+        </div>
+        <div class="mov-right">
+          <div class="mov-amount">${fmt(m.amount)} ${cur}</div>
+          <button class="btn" style="padding:3px 7px;font-size:11px;" onclick="openEditModal('${m.id}','${c.id}',${m.amount})">✏️</button>
+          <button class="btn btn-red" style="padding:3px 7px;font-size:11px;" onclick="deleteMovement('${m.id}','${c.id}')">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div class="cur-section">
+      <div class="cur-header">
+        <div>
+          <div class="cur-tag">${cur}</div>
+          <div class="cur-amount">${sign}${fmt(Math.abs(bal))}</div>
+          <div class="cur-label">${label}</div>
+        </div>
       </div>
-    </div>
-    <div class="card">
-      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
-        <span>Detalle</span>
-        <button class="btn" style="color:var(--red);border-color:var(--red-dim);font-size:11px;padding:4px 10px;" onclick="resetGananciaMes('${activeKey}',${JSON.stringify(keys)})">🗑 Borrar mes</button>
-      </div>
-      ${!m.items.length?'<div class="empty-hist">Sin registros</div>':
-        [...m.items].reverse().map(g=>`
-          <div class="tx-row">
-            <div style="flex:1;">
-              <div class="tx-desc">${g.description||'Ganancia'}</div>
-              <div class="tx-date">${fmtDate(g.created_at)}</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <div class="tx-amt amt-pos">+$${fmt(Number(g.amount))}</div>
-              <button class="btn" style="padding:3px 7px;font-size:11px;" onclick="editGananciaById('${g.id}',${g.amount})">✏️</button>
-              <button class="btn" style="padding:3px 7px;font-size:11px;color:var(--red);" onclick="deleteGananciaById('${g.id}')">✕</button>
-            </div>
-          </div>`).join('')}
+      <div class="cur-movs">${rows || '<div class="empty-mov">Sin movimientos en esta moneda</div>'}</div>
     </div>`;
+  }).join('');
+
+  document.getElementById('clientBody').innerHTML = sections + `
+    <button class="btn btn-red" style="width:100%;justify-content:center;" onclick="resetClient('${c.id}')">🗑 Borrar todos los movimientos</button>`;
 }
 
-async function deleteGananciaById(ganId){
-  if(!confirm('¿Borrar esta ganancia?')) return;
-  if(!sbClient||!currentUser) return;
-  await sbClient.from('ganancias').delete().eq('id',ganId);
-  gananciasCache=gananciasCache.filter(g=>g.id!==ganId);
+// ── EDIT MOVEMENT ──────────────────────────────────────────────────────
+function openEditModal(movId, clientId, currentAmount) {
+  editTarget = { movId, clientId };
+  document.getElementById('editAmount').value = currentAmount;
+  document.getElementById('editErr').style.display = 'none';
+  document.getElementById('editModal').classList.add('on');
+  setTimeout(() => document.getElementById('editAmount').select(), 100);
+}
+
+async function confirmEdit() {
+  const val = parseFloat(document.getElementById('editAmount').value.replace(',', '.'));
+  if (isNaN(val) || val <= 0) { document.getElementById('editErr').textContent = 'Monto inválido'; document.getElementById('editErr').style.display = 'block'; return; }
+  if (!db || !user) return;
+  await db.from('movements').update({ amount: val }).eq('id', editTarget.movId);
+  closeModal('editModal');
+  await openClient(editTarget.clientId);
+}
+
+// ── DELETE MOVEMENT ────────────────────────────────────────────────────
+async function deleteMovement(movId, clientId) {
+  if (!confirm('¿Borrar este movimiento?')) return;
+  if (!db || !user) return;
+  await db.from('movements').delete().eq('id', movId);
+  await openClient(clientId);
+}
+
+// ── RESET CLIENT ───────────────────────────────────────────────────────
+async function resetClient(clientId) {
+  const c = clients.find(x => x.id === clientId);
+  if (!confirm(`¿Borrar TODOS los movimientos de ${c?.name}? No se puede deshacer.`)) return;
+  if (!db || !user) return;
+  await db.from('movements').delete().eq('client_id', clientId);
+  await openClient(clientId);
+}
+
+// ── DELETE CLIENT ──────────────────────────────────────────────────────
+async function deleteClient() {
+  const c = clients.find(x => x.id === selClientId);
+  if (!c) return;
+  if (!confirm(`¿Borrar a "${c.name}" y todos sus movimientos?`)) return;
+  if (!db || !user) return;
+  await db.from('movements').delete().eq('client_id', c.id);
+  await db.from('clients').delete().eq('id', c.id);
+  clients = clients.filter(x => x.id !== c.id);
+  selClientId = null;
+  renderClientList();
+  goBack();
+}
+
+function goBack() {
+  const isMobile = window.innerWidth < 641;
+  showPanel(isMobile ? 'clientes' : 'chat', document.querySelector(`[data-p=${isMobile?'clientes':'chat'}]`));
+}
+
+// ── ADD CLIENT ────────────────────────────────────────────────────────
+function openAddClient() {
+  document.getElementById('newCliName').value = '';
+  document.getElementById('newCliErr').style.display = 'none';
+  document.getElementById('addClientModal').classList.add('on');
+  setTimeout(() => document.getElementById('newCliName').focus(), 100);
+}
+
+async function confirmAddClient() {
+  const name = document.getElementById('newCliName').value.trim();
+  const errEl = document.getElementById('newCliErr');
+  if (!name) { errEl.textContent = 'Escribí un nombre'; errEl.style.display = 'block'; return; }
+  if (clients.find(c => c.name.toLowerCase() === name.toLowerCase())) { errEl.textContent = `"${name}" ya existe`; errEl.style.display = 'block'; return; }
+  if (!db || !user) return;
+  const { data } = await db.from('clients').insert({ user_id: user.id, name }).select().single();
+  if (data) { clients.push(data); renderClientList(); }
+  closeModal('addClientModal');
+}
+
+// ── GANANCIAS ─────────────────────────────────────────────────────────
+function renderGanancias() {
+  const el = document.getElementById('ganBody');
+  if (!ganancias.length) { el.innerHTML = '<div class="no-clients" style="padding:40px;">Sin ganancias aún.<br>Escribí: "ganancia operacion Pedro 35 usd"</div>'; return; }
+
+  const months = {};
+  ganancias.forEach(g => {
+    const k = g.month_key || 'Sin fecha';
+    if (!months[k]) months[k] = [];
+    months[k].push(g);
+  });
+
+  const keys = Object.keys(months).reverse();
+  const activeKey = keys[0];
+
+  const tabsHtml = keys.map(k => `<button class="mtab${k===activeKey?' on':''}" onclick="renderGanMonth('${k}')">${k}</button>`).join('');
+
+  el.innerHTML = `<div class="card"><div class="card-title">Período</div><div class="month-tabs">${tabsHtml}</div></div>
+    <div id="ganMonthContent"></div>`;
+
+  renderGanMonth(activeKey);
+}
+
+function renderGanMonth(key) {
+  document.querySelectorAll('.mtab').forEach(t => t.classList.toggle('on', t.textContent === key));
+  const items = ganancias.filter(g => (g.month_key || 'Sin fecha') === key);
+
+  // Group by currency
+  const byCur = {};
+  items.forEach(g => {
+    const cur = g.currency || 'USD';
+    if (!byCur[cur]) byCur[cur] = { total: 0, items: [] };
+    byCur[cur].total += Number(g.amount);
+    byCur[cur].items.push(g);
+  });
+
+  const totalsHtml = Object.entries(byCur).map(([cur, data]) =>
+    `<div class="stat-box"><div class="stat-lbl">${cur}</div><div class="stat-val" style="color:var(--grn);">${fmt(data.total)}</div></div>`
+  ).join('');
+
+  const rowsHtml = [...items].reverse().map(g => `
+    <div class="gan-row">
+      <div>
+        <div class="gan-desc">${g.description || 'Ganancia'}</div>
+        <div class="gan-cur">${g.currency || 'USD'}</div>
+        <div class="gan-date">${fmtDate(g.created_at)}</div>
+      </div>
+      <div class="gan-right">
+        <div class="gan-amount">+${fmt(g.amount)}</div>
+        <button class="btn" style="padding:3px 7px;font-size:11px;" onclick="editGanancia('${g.id}',${g.amount})">✏️</button>
+        <button class="btn btn-red" style="padding:3px 7px;font-size:11px;" onclick="deleteGanancia('${g.id}')">✕</button>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('ganMonthContent').innerHTML = `
+    <div class="card"><div class="card-title">Totales — ${key}</div><div class="stats-row">${totalsHtml}</div></div>
+    <div class="card"><div class="card-title">Detalle</div>${rowsHtml}</div>`;
+}
+
+async function deleteGanancia(id) {
+  if (!confirm('¿Borrar esta ganancia?')) return;
+  if (db && user) await db.from('ganancias').delete().eq('id', id);
+  ganancias = ganancias.filter(g => g.id !== id);
   renderGanancias();
 }
 
-async function editGananciaById(ganId,oldAmount){
-  const newStr=window.prompt(`Nuevo monto (actual: $${fmt(oldAmount)}):`,oldAmount);
-  if(!newStr) return;
-  const newAmt=parseFloat(newStr.replace(',','.'));
-  if(isNaN(newAmt)||newAmt<=0){window.alert('Monto inválido');return;}
-  if(!sbClient||!currentUser) return;
-  await sbClient.from('ganancias').update({amount:newAmt}).eq('id',ganId);
-  const g=gananciasCache.find(x=>x.id===ganId);
-  if(g) g.amount=newAmt;
+async function editGanancia(id, current) {
+  const val = window.prompt(`Nuevo monto (actual: ${fmt(current)}):`, current);
+  if (!val) return;
+  const newAmt = parseFloat(val.replace(',', '.'));
+  if (isNaN(newAmt) || newAmt <= 0) { alert('Monto inválido'); return; }
+  if (db && user) await db.from('ganancias').update({ amount: newAmt }).eq('id', id);
+  const g = ganancias.find(x => x.id === id);
+  if (g) g.amount = newAmt;
   renderGanancias();
 }
 
-async function deleteGanancia(ganId,activeKey,keys){
-  if(!confirm('¿Borrar esta ganancia?')) return;
-  if(!sbClient||!currentUser) return;
-  await sbClient.from('ganancias').delete().eq('id',ganId);
-  gananciasCache=gananciasCache.filter(g=>g.id!==ganId);
-  renderGanMes(activeKey,keys);
+// ── CHAT ──────────────────────────────────────────────────────────────
+function updateApiWarn() {
+  document.getElementById('apiWarn').style.display = getApiKey() ? 'none' : 'flex';
 }
 
-async function editGanancia(ganId,oldAmount,activeKey,keys){
-  const newStr=prompt(`Nuevo monto (actual: $${fmt(oldAmount)}):`,oldAmount);
-  if(!newStr) return;
-  const newAmt=parseFloat(newStr.replace(',','.'));
-  if(isNaN(newAmt)||newAmt<=0){alert('Monto inválido');return;}
-  if(!sbClient||!currentUser) return;
-  await sbClient.from('ganancias').update({amount:newAmt}).eq('id',ganId);
-  const g=gananciasCache.find(x=>x.id===ganId);
-  if(g) g.amount=newAmt;
-  renderGanMes(activeKey,keys);
-}
+async function sendChat() {
+  const inp = document.getElementById('chatInput');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = ''; inp.style.height = 'auto';
+  document.getElementById('sendBtn').disabled = true;
+  appendMsg(text, 'me');
 
-async function resetGananciaMes(monthKey,keys){
-  if(!confirm(`¿Borrar TODAS las ganancias de ${monthKey}? No se puede deshacer.`)) return;
-  if(!sbClient||!currentUser) return;
-  const ids=gananciasCache.filter(g=>g.month_key===monthKey).map(g=>g.id);
-  for(const id of ids) await sbClient.from('ganancias').delete().eq('id',id);
-  gananciasCache=gananciasCache.filter(g=>g.month_key!==monthKey);
-  const remaining=keys.filter(k=>k!==monthKey);
-  if(!remaining.length){renderGanancias();return;}
-  renderGanMes(remaining[remaining.length-1],remaining);
-}
+  const apiKey = getApiKey();
+  if (!apiKey) { appendMsg('⚠️ Configurá tu API key en Config.', 'ai'); document.getElementById('sendBtn').disabled = false; return; }
 
-// ─── CHAT ─────────────────────────────────────────────────────────────
-function updateApiBanner(){
-  document.getElementById('apiBanner').style.display=getApiKey()?'none':'flex';
-}
+  const typing = appendTyping();
+  const clientSummary = clients.map(c => c.name).join(', ') || 'ninguno';
 
-async function sendChat(){
-  const inp=document.getElementById('chatInput');
-  const text=inp.value.trim();
-  if(!text) return;
-  inp.value='';inp.style.height='auto';
-  document.getElementById('sendBtn').disabled=true;
-  appendMsg(text,'me');
-  const typing=appendTyping();
-  const apiKey=getApiKey();
-  if(!apiKey){typing.remove();appendMsg('⚠️ Configurá tu API key de Claude en Configuración para usar el chat con IA.','ai');document.getElementById('sendBtn').disabled=false;return;}
-  const clientSummary=clientsCache.map(c=>`${c.name}: saldo $${fmt(c.balance)}`).join(', ')||'ninguno';
   try {
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key':apiKey,
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
       },
-      body:JSON.stringify({
-        model:'claude-opus-4-5',max_tokens:600,
-        system:`Sos un asistente de cobranzas. La app registra deudas en DOS direcciones y múltiples monedas.
+      body: JSON.stringify({
+        model: 'claude-opus-4-5',
+        max_tokens: 400,
+        system: `Sos un asistente de cobranzas. Respondé SOLO con JSON sin markdown.
 
-Respondé SOLO con JSON sin markdown:
-{"action":"deuda_cliente"|"deuda_yo"|"pago_cliente"|"pago_yo"|"ganancia"|"ver_cliente"|"chat","client":"nombre","amount":número,"currency":"USD"|"ARS"|"USDT"|"EUR"|"BRL"|"otra","note":"desc corta o recordatorio","desc":"desc ganancia","message":"respuesta informal max 2 líneas"}
+Formato:
+{"action":"deuda_cliente"|"deuda_yo"|"pago_cliente"|"pago_yo"|"ganancia"|"ver_cliente"|"chat",
+ "client":"nombre", "amount":número, "currency":"USD"|"ARS"|"USDT"|"EUR"|"BRL",
+ "note":"texto descriptivo corto", "desc":"descripcion ganancia", "message":"respuesta corta informal"}
 
-MONEDAS — detectá automáticamente:
-- "usd", "dolar", "dólares" → USD
-- "pesos", "ars", "$" sin especificar → ARS  
-- "usdt", "tether" → USDT
-- "euro", "eur" → EUR
-- "real", "brl" → BRL
-- Si no se especifica → USD por defecto
+REGLAS DE MONEDA: detectá automáticamente
+- usd/dolar/dólares → USD (default si no se especifica)
+- pesos/ars → ARS
+- usdt/tether → USDT
+- euro/eur → EUR
+- real/brl → BRL
 
-ACCIONES:
-- "deuda_cliente" = el CLIENTE le debe al USUARIO
-- "deuda_yo" = el USUARIO le debe al CLIENTE
-- "pago_cliente" = el cliente pagó al usuario
-- "pago_yo" = el usuario pagó al cliente
+TIPOS DE ACCIÓN:
+- deuda_cliente: el CLIENTE te debe a VOS (ej: "Laupa me debe 1000 usd", "Laupa debe 500")
+- deuda_yo: VOS le debés al cliente (ej: "le debo 500 a Laupa", "yo le debo a Laupa")
+- pago_cliente: el cliente te pagó (ej: "Laupa me pagó 300", "cobré 300 de Laupa")
+- pago_yo: vos le pagaste al cliente (ej: "le pagué 200 a Laupa", "pagué a Laupa")
+- ganancia: registrar ganancia propia (ej: "ganancia operacion pedro 35 usd")
+- ver_cliente: ver cuenta de cliente
 
-NOTA: Si el usuario agrega texto descriptivo como "por cambio", "saldo invexa", "operación X" → ponerlo en "note"
+NOTA: si hay texto descriptivo como "por cambio", "saldo invexa", "operacion X" → ponerlo en "note"
 
-EJEMPLOS:
-- "rama me debe 1000 usd por operacion de cambio" → deuda_cliente, client:rama, amount:1000, currency:USD, note:"operación de cambio"
-- "rama me debe 200000 pesos por saldo invexa" → deuda_cliente, client:rama, amount:200000, currency:ARS, note:"saldo invexa"
-- "le debo 500 usdt a gero" → deuda_yo, client:gero, amount:500, currency:USDT
-- "rama me pagó 300 usd" → pago_cliente, client:rama, amount:300, currency:USD
-- "ganancia operacion Ricardo 35 usd" → ganancia, amount:35, currency:USD, desc:"Operación Ricardo"
-- "ver cuenta de rama" → ver_cliente, client:rama
-
-Clientes actuales: ${clientSummary}`,
-        messages:[{role:'user',content:text}]
+Clientes existentes: ${clientSummary}`,
+        messages: [{ role: 'user', content: text }]
       })
     });
-    const data=await res.json();
+    const data = await res.json();
     typing.remove();
-    if(!res.ok) throw new Error(data.error?.message||'API error');
+    if (!res.ok) throw new Error(data.error?.message || 'Error API');
     let parsed;
-    try{parsed=JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());}
-    catch(e){appendMsg('No entendí bien. Probá: "Ramiro debe 500" o "ver cuenta de Ramiro".','ai');document.getElementById('sendBtn').disabled=false;return;}
+    try { parsed = JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim()); }
+    catch(e) { appendMsg('No entendí. Probá: "Laupa me debe 500 usd"', 'ai'); document.getElementById('sendBtn').disabled = false; return; }
     await processAction(parsed);
-  } catch(e){
+  } catch(e) {
     typing.remove();
-    appendMsg('Error de conexión: '+e.message,'ai');
+    appendMsg('Error: ' + e.message, 'ai');
   }
-  document.getElementById('sendBtn').disabled=false;
+  document.getElementById('sendBtn').disabled = false;
 }
 
-async function processAction({action,client,amount,currency,note,desc,message}){
-  function findClient(name){
-    return clientsCache.find(x=>x.name.toLowerCase()===name.toLowerCase());
-  }
-  const cur = currency||'USD';
-  const curSym = cur==='ARS'?'$ARS ':cur==='USDT'?'USDT ':cur==='EUR'?'€':cur==='BRL'?'R$':'$';
+async function processAction({ action, client, amount, currency, note, desc, message }) {
+  const cur = currency || 'USD';
+  const curLabel = cur === 'ARS' ? 'pesos' : cur === 'USDT' ? 'USDT' : cur === 'EUR' ? 'euros' : cur === 'BRL' ? 'reales' : 'USD';
 
-  if((action==='deuda_cliente'||action==='deuda')&&client&&amount){
-    try{
-      const c=findClient(client);
-      if(!c){appendMsg(`⚠️ No encontré a "${client}". Agregalo primero desde la solapa Clientes.`,'ai');return;}
-      const newBal=Number(c.balance)+Number(amount);
-      await addMovement(c.id,'deuda_cliente',amount,note||'',cur);
-      await updateClientBalance(c.id,newBal);
-      renderClientList();
-      appendMsg(message||`✅ ${client} te debe ${curSym}${fmt(amount)} [${cur}]${note?' — '+note:''}.`,'ai');
-    }catch(e){appendMsg('Error: '+e.message,'ai');}
-  } else if(action==='deuda_yo'&&client&&amount){
-    try{
-      const c=findClient(client);
-      if(!c){appendMsg(`⚠️ No encontré a "${client}". Agregalo primero desde la solapa Clientes.`,'ai');return;}
-      const newBal=Number(c.balance)-Number(amount);
-      await addMovement(c.id,'deuda_yo',amount,note||'',cur);
-      await updateClientBalance(c.id,newBal);
-      renderClientList();
-      appendMsg(message||`✅ Le debés ${curSym}${fmt(amount)} [${cur}] a ${client}${note?' — '+note:''}.`,'ai');
-    }catch(e){appendMsg('Error: '+e.message,'ai');}
-  } else if((action==='pago_cliente'||action==='pago')&&client&&amount){
-    try{
-      const c=findClient(client);
-      if(!c){appendMsg(`⚠️ No encontré a "${client}". Revisá el nombre.`,'ai');return;}
-      const newBal=Number(c.balance)-Number(amount);
-      await addMovement(c.id,'pago_cliente',amount,note||'',cur);
-      await updateClientBalance(c.id,newBal);
-      renderClientList();
-      appendMsg(message||`✅ ${client} te pagó ${curSym}${fmt(amount)} [${cur}]${note?' — '+note:''}.`,'ai');
-    }catch(e){appendMsg('Error: '+e.message,'ai');}
-  } else if(action==='pago_yo'&&client&&amount){
-    try{
-      const c=findClient(client);
-      if(!c){appendMsg(`⚠️ No encontré a "${client}". Revisá el nombre.`,'ai');return;}
-      const newBal=Number(c.balance)+Number(amount);
-      await addMovement(c.id,'pago_yo',amount,note||'',cur);
-      await updateClientBalance(c.id,newBal);
-      renderClientList();
-      appendMsg(message||`✅ Le pagaste ${curSym}${fmt(amount)} [${cur}] a ${client}${note?' — '+note:''}.`,'ai');
-    }catch(e){appendMsg('Error: '+e.message,'ai');}
-  } else if(action==='ganancia'&&amount){
-    await addGanancia(amount,desc||'Ganancia',cur);
-    appendMsg(message||`✅ Ganancia de ${cur==='ARS'?'$ARS ':cur==='USDT'?'USDT ':cur==='EUR'?'€':'$'}${fmt(amount)} [${cur}] registrada.`,'ai');
-  } else if(action==='ver_cliente'&&client){
-    const c=clientsCache.find(x=>x.name.toLowerCase()===client.toLowerCase());
-    if(c){openClient(c.id);appendMsg(message||`Acá está la cuenta de ${client} 👆`,'ai');}
-    else{appendMsg(`No encontré a ${client}. Podés crear su cuenta diciéndome cuánto debe.`,'ai');}
+  function findClient(name) {
+    return clients.find(x => x.name.toLowerCase() === name?.toLowerCase());
+  }
+
+  if (action === 'deuda_cliente' && client && amount) {
+    const c = findClient(client);
+    if (!c) { appendMsg(`⚠️ No encontré a "${client}". Agregalo desde la solapa Clientes.`, 'ai'); return; }
+    await addMovement(c.id, 'deuda_cliente', amount, cur, note);
+    appendMsg(message || `✅ ${client} te debe ${fmt(amount)} ${curLabel}${note ? ' — ' + note : ''}.`, 'ai');
+    if (selClientId === c.id) await openClient(c.id);
+
+  } else if (action === 'deuda_yo' && client && amount) {
+    const c = findClient(client);
+    if (!c) { appendMsg(`⚠️ No encontré a "${client}". Agregalo desde la solapa Clientes.`, 'ai'); return; }
+    await addMovement(c.id, 'deuda_yo', amount, cur, note);
+    appendMsg(message || `✅ Registré que le debés ${fmt(amount)} ${curLabel} a ${client}${note ? ' — ' + note : ''}.`, 'ai');
+    if (selClientId === c.id) await openClient(c.id);
+
+  } else if (action === 'pago_cliente' && client && amount) {
+    const c = findClient(client);
+    if (!c) { appendMsg(`⚠️ No encontré a "${client}".`, 'ai'); return; }
+    await addMovement(c.id, 'pago_cliente', amount, cur, note);
+    appendMsg(message || `✅ ${client} te pagó ${fmt(amount)} ${curLabel}.`, 'ai');
+    if (selClientId === c.id) await openClient(c.id);
+
+  } else if (action === 'pago_yo' && client && amount) {
+    const c = findClient(client);
+    if (!c) { appendMsg(`⚠️ No encontré a "${client}".`, 'ai'); return; }
+    await addMovement(c.id, 'pago_yo', amount, cur, note);
+    appendMsg(message || `✅ Le pagaste ${fmt(amount)} ${curLabel} a ${client}.`, 'ai');
+    if (selClientId === c.id) await openClient(c.id);
+
+  } else if (action === 'ganancia' && amount) {
+    await addGanancia(amount, desc || 'Ganancia', cur);
+    appendMsg(message || `✅ Ganancia de ${fmt(amount)} ${curLabel} registrada.`, 'ai');
+
+  } else if (action === 'ver_cliente' && client) {
+    const c = findClient(client);
+    if (c) { await openClient(c.id); appendMsg(message || `Acá está la cuenta de ${client} 👆`, 'ai'); }
+    else { appendMsg(`No encontré a ${client}.`, 'ai'); }
+
   } else {
-    appendMsg(message||'Entendido!','ai');
+    appendMsg(message || 'Entendido!', 'ai');
   }
 }
 
-function appendMsg(text,who){
-  const msgs=document.getElementById('chatMsgs');
-  const d=document.createElement('div');
-  d.className=`msg msg-${who==='me'?'me':'ai'}`;
-  d.innerHTML=`<div class="bubble">${text.replace(/\n/g,'<br>')}</div><div class="msg-time">${nowTime()}</div>`;
-  msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d;
+function appendMsg(text, who) {
+  const el = document.getElementById('chatMsgs');
+  const d = document.createElement('div');
+  d.className = `msg msg-${who === 'me' ? 'me' : 'ai'}`;
+  d.innerHTML = `<div class="bubble">${text.replace(/\n/g,'<br>')}</div><div class="msg-time">${nowTime()}</div>`;
+  el.appendChild(d); el.scrollTop = el.scrollHeight; return d;
 }
-function appendTyping(){
-  const msgs=document.getElementById('chatMsgs');
-  const d=document.createElement('div');
-  d.className='msg msg-ai';
-  d.innerHTML='<div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
-  msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d;
+function appendTyping() {
+  const el = document.getElementById('chatMsgs');
+  const d = document.createElement('div');
+  d.className = 'msg msg-ai';
+  d.innerHTML = '<div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+  el.appendChild(d); el.scrollTop = el.scrollHeight; return d;
 }
-function handleChatKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}}
-function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,110)+'px';}
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }
+function autoH(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 110) + 'px'; }
 
-// ─── DOWNLOAD HISTORY ─────────────────────────────────────────────────
-async function downloadHistory(){
-  // Refrescar el cliente desde Supabase para tener el balance actualizado
-  if(!selectedClientId){alert('Seleccioná un cliente primero');return;}
-  if(sbClient&&currentUser){
-    const {data} = await sbClient.from('clients').select('*').eq('id',selectedClientId).single();
-    if(data){ const idx=clientsCache.findIndex(x=>x.id===selectedClientId); if(idx>=0) clientsCache[idx]=data; }
-  }
-  const c=clientsCache.find(x=>x.id===selectedClientId);
-  if(!c){alert('No se encontró el cliente');return;}
-  const movs=await getClientMovements(c.id);
-  // balance de Supabase es la fuente de verdad
-  // positivo = cliente te debe, negativo = vos le debés
-  const clientBalance = Number(c.balance);
-
+// ── PDF ───────────────────────────────────────────────────────────────
+async function downloadPDF() {
+  const c = clients.find(x => x.id === selClientId);
+  if (!c) return;
+  const movs = await getMovements(c.id);
+  const balances = calcBalances(movs);
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
-  const H = doc.internal.pageSize.getHeight();
-  const dateStr = new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const dateStr = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-  // Header - professional dark gradient look
+  // Header
   doc.setFillColor(10,10,10);
-  doc.rect(0,0,W,42,'F');
-  
-  // Accent line
-  doc.setFillColor(200,245,90);
-  doc.rect(0,42,W,1.5,'F');
-
-  // Left side - logo circle
-  doc.setFillColor(25,25,25);
-  doc.circle(22,21,13,'F');
-  doc.setDrawColor(200,245,90);
+  doc.rect(0,0,W,40,'F');
+  doc.setFillColor(212,240,96);
+  doc.rect(0,40,W,1.5,'F');
+  doc.setFillColor(20,20,20);
+  doc.circle(22,20,12,'F');
+  doc.setDrawColor(212,240,96);
   doc.setLineWidth(0.8);
-  doc.circle(22,21,13,'S');
-  doc.setTextColor(200,245,90);
-  doc.setFontSize(16);
+  doc.circle(22,20,12,'S');
+  doc.setTextColor(212,240,96);
+  doc.setFontSize(15);
   doc.setFont('helvetica','bold');
-  doc.text('$',22,25,{align:'center'});
-
-  // Title block
+  doc.text('$',22,24,{align:'center'});
   doc.setTextColor(255,255,255);
-  doc.setFontSize(20);
-  doc.setFont('helvetica','bold');
-  doc.text('Cuenta Corriente',40,15);
-  
+  doc.setFontSize(18);
+  doc.text('Cuenta Corriente',38,14);
   doc.setFontSize(10);
   doc.setFont('helvetica','normal');
   doc.setTextColor(180,180,180);
-  doc.text(`Cliente:`,40,24);
+  doc.text('Cliente:',38,22);
   doc.setTextColor(240,237,232);
   doc.setFont('helvetica','bold');
-  doc.text(c.name,58,24);
-  
+  doc.text(c.name,54,22);
   doc.setFont('helvetica','normal');
   doc.setTextColor(130,130,130);
   doc.setFontSize(9);
-  doc.text(`Emitido el ${dateStr}`,40,32);
+  doc.text(`Emitido el ${dateStr}`,38,30);
 
-  // Saldo badge — desde la perspectiva del cliente que recibe el PDF
-  // balance > 0: el CLIENTE le debe al usuario → el cliente VE que debe plata → rojo
-  // balance < 0: el USUARIO le debe al cliente → el cliente VE que le deben plata → verde
-  // balance > 0 = cliente te debe → "TE DEBEN" verde
-  // balance < 0 = vos debés → "DEBÉS" rojo
-  // Badge shows summary - use first currency or generic
-  const firstCur = Object.entries(pdfCurrencies||{})[0];
-  const firstBal = firstCur?firstCur[1]:0;
-  const saldoText = Object.keys(pdfCurrencies||{}).length>1?'VER SALDOS':firstBal>0?`TE DEBEN ${fmt(firstBal)}`:firstBal<0?`DEBÉS ${fmt(Math.abs(firstBal))}`:'AL DÍA';
-  const badgeColor = firstBal>0?[78,203,122]:firstBal<0?[255,96,96]:[200,245,90];
-  doc.setFillColor(...badgeColor);
-  doc.roundedRect(W-52,10,46,16,3,3,'F');
-  doc.setTextColor(15,15,15);
-  doc.setFontSize(9);
-  doc.setFont('helvetica','bold');
-  doc.text(saldoText,W-29,20,{align:'center'});
+  let y = 50;
 
-  // Summary cards
-  let y=48;
-  // // Saldos por moneda desde movimientos
-  const pdfCurrencies = {};
-  movs.forEach(m=>{
-    const cur = m.currency||'USD';
-    if(!pdfCurrencies[cur]) pdfCurrencies[cur]=0;
-    const amt = Number(m.amount);
-    if(m.type==='deuda_cliente'||m.type==='deuda') pdfCurrencies[cur]+=amt;
-    else if(m.type==='deuda_yo') pdfCurrencies[cur]-=amt;
-    else if(m.type==='pago_cliente'||m.type==='pago') pdfCurrencies[cur]-=amt;
-    else if(m.type==='pago_yo') pdfCurrencies[cur]+=amt;
-  });
-  const curEntries = Object.entries(pdfCurrencies);
-  if(curEntries.length===0) curEntries.push(['USD',0]);
-  const cardW = Math.min((W-20)/curEntries.length - 3, 55);
-  curEntries.forEach(([cur,bal],i)=>{
-    const cx = 10+i*(cardW+3);
-    const saldoLabel = bal>0?'Te deben':bal<0?'Debes':'Al dia';
-    const saldoColor = bal>0?[78,203,122]:bal<0?[255,96,96]:[150,150,150];
-    doc.setFillColor(24,24,24);
-    doc.roundedRect(cx,y,cardW,20,2,2,'F');
-    doc.setTextColor(130,130,130);
-    doc.setFontSize(7);
-    doc.setFont('helvetica','normal');
-    doc.text(cur,cx+cardW/2,y+6,{align:'center'});
-    doc.setTextColor(...saldoColor);
-    doc.setFontSize(9);
+  // Saldos por moneda
+  const currencies = [...new Set(movs.map(m => m.currency || 'USD'))];
+  if (currencies.length) {
+    doc.setTextColor(100,100,100);
+    doc.setFontSize(8);
     doc.setFont('helvetica','bold');
-    const balText = saldoLabel+': '+fmt(Math.abs(bal));
-    doc.text(balText,cx+cardW/2,y+14,{align:'center'});
-  });
+    doc.text('SALDOS POR MONEDA', 10, y);
+    y += 4;
+    const cardW = (W-20) / Math.min(currencies.length, 4) - 3;
+    currencies.forEach((cur, i) => {
+      const bal = balances[cur] || 0;
+      const cx = 10 + i * (cardW + 3);
+      const label = bal > 0 ? 'Te deben' : bal < 0 ? 'Debés' : 'Al día';
+      const color = bal > 0 ? [80,208,144] : bal < 0 ? [240,96,96] : [150,150,150];
+      doc.setFillColor(20,20,20);
+      doc.roundedRect(cx, y, cardW, 18, 2, 2, 'F');
+      doc.setTextColor(130,130,130);
+      doc.setFontSize(7);
+      doc.setFont('helvetica','normal');
+      doc.text(cur, cx+cardW/2, y+5, {align:'center'});
+      doc.setTextColor(...color);
+      doc.setFontSize(9);
+      doc.setFont('helvetica','bold');
+      doc.text(`${label}: ${fmt(Math.abs(bal))}`, cx+cardW/2, y+12, {align:'center'});
+    });
+    y += 24;
+  }
 
-  // Movements table
-  y=76;
-  doc.setTextColor(60,60,60);
-  doc.setFontSize(9);
-  doc.setFont('helvetica','bold');
-  doc.text('MOVIMIENTOS',10,y);
-  doc.setDrawColor(200,245,90);
-  doc.setLineWidth(0.5);
-  doc.line(10,y+2,W-10,y+2);
+  // Movimientos por moneda
+  currencies.forEach(cur => {
+    const movsByCur = movs.filter(m => (m.currency||'USD') === cur);
+    if (!movsByCur.length) return;
 
-  const rows = [...movs].reverse().map(m=>{
-      // Desde perspectiva del cliente que recibe el PDF:
-    const tipo = m.type==='deuda_cliente'?'Debés':
-                 m.type==='deuda_yo'?'Te deben':
-                 m.type==='pago_cliente'?'Pagaste':
-                 m.type==='pago_yo'?'Te pagaron':
-                 m.type==='deuda'?'Debés':'Pagaste';
-    const cur = m.currency||'USD';
-    const signo = (m.type==='deuda_cliente'||m.type==='deuda'||m.type==='pago_yo')?'-':'+';
-    const montoFmt = signo+fmt(Number(m.amount))+' '+cur;
-    return [fmtDate(m.created_at), tipo, cur, m.note||'-', montoFmt];
-  });
+    doc.setTextColor(80,80,80);
+    doc.setFontSize(8);
+    doc.setFont('helvetica','bold');
+    doc.text(`MOVIMIENTOS ${cur}`, 10, y);
+    doc.setDrawColor(212,240,96);
+    doc.setLineWidth(0.4);
+    doc.line(10, y+1.5, W-10, y+1.5);
+    y += 5;
 
-  doc.autoTable({
-    startY: y+5,
-    head: [['Fecha','Tipo','Moneda','Descripción','Monto']],
-    body: rows,
-    theme:'grid',
-    headStyles:{fillColor:[24,24,24],textColor:[200,245,90],fontStyle:'bold',fontSize:8},
-    bodyStyles:{fontSize:8,textColor:[60,60,60]},
-    alternateRowStyles:{fillColor:[248,248,248]},
-    columnStyles:{
-      0:{cellWidth:35},
-      1:{cellWidth:20},
-      2:{cellWidth:18},
-      3:{cellWidth:'auto'},
-      4:{cellWidth:32,halign:'right',fontStyle:'bold'}
-    },
-    didParseCell:(data)=>{
-      if(data.column.index===4&&data.section==='body'){
-        data.cell.styles.textColor = data.cell.raw.startsWith('-')?[220,60,60]:[60,180,100];
-      }
-      if(data.column.index===2&&data.section==='body'){
-        data.cell.styles.textColor = [150,150,150];
-        data.cell.styles.fontSize = 7;
-      }
-    }
+    const rows = [...movsByCur].reverse().map(m => {
+      const tipo = m.type==='deuda_cliente'?'Te debe':m.type==='deuda_yo'?'Debés':m.type==='pago_cliente'?'Te pagaron':'Pagaste';
+      return [fmtDate(m.created_at), tipo, m.note||'-', fmt(m.amount)+' '+cur];
+    });
+
+    doc.autoTable({
+      startY: y,
+      head: [['Fecha','Tipo','Descripción','Monto']],
+      body: rows,
+      theme: 'grid',
+      headStyles: { fillColor: [20,20,20], textColor: [212,240,96], fontStyle: 'bold', fontSize: 8 },
+      bodyStyles: { fontSize: 8, textColor: [60,60,60] },
+      alternateRowStyles: { fillColor: [248,248,248] },
+      columnStyles: { 0:{cellWidth:38}, 1:{cellWidth:22}, 2:{cellWidth:'auto'}, 3:{cellWidth:35,halign:'right',fontStyle:'bold'} },
+      margin: { left: 10, right: 10 }
+    });
+    y = doc.lastAutoTable.finalY + 8;
   });
 
   // Footer
-  const finalY = doc.lastAutoTable.finalY+8;
-  doc.setFillColor(24,24,24);
-  doc.rect(0,finalY,W,20,'F');
-  doc.setTextColor(130,130,130);
+  doc.setFillColor(15,15,15);
+  doc.rect(0, doc.internal.pageSize.getHeight()-14, W, 14, 'F');
+  doc.setTextColor(100,100,100);
   doc.setFontSize(7);
   doc.setFont('helvetica','normal');
-  doc.text('Este documento fue generado automáticamente por Cobranzas IA',W/2,finalY+7,{align:'center'});
-  doc.text(`Documento válido al ${dateStr}`,W/2,finalY+13,{align:'center'});
+  doc.text('Documento generado por Cobranzas IA', W/2, doc.internal.pageSize.getHeight()-7, {align:'center'});
 
-  const filename=`cuenta_${c.name.toLowerCase().replace(/ /g,'_')}_${dateStr.replace(/\//g,'-')}.pdf`;
-  doc.save(filename);
+  doc.save(`cuenta_${c.name.toLowerCase().replace(/ /g,'_')}_${dateStr.replace(/\//g,'-')}.pdf`);
 }
 
-// ─── SETUP ────────────────────────────────────────────────────────────
-function saveApiKey(){
-  const k=document.getElementById('apiKeyInput').value.trim();
-  S.set('cbr_api_key',k);
-  updateApiBanner();
-  document.getElementById('apiKeyStatus').innerHTML=k?'<span class="badge badge-ok">✓ API key guardada</span>':'<span class="badge badge-warn">✗ Key vacía</span>';
-}
-async function saveSupabase(){
-  const url=document.getElementById('sbUrl').value.trim();
-  const key=document.getElementById('sbKey').value.trim();
-  S.set('cbr_sb_url',url);S.set('cbr_sb_key',key);
-  const ok=initSupabase();
-  document.getElementById('sbStatus').innerHTML=ok?'<span class="badge badge-ok">✓ Conectado a Supabase</span>':'<span class="badge badge-warn">✗ Error — verificá los datos</span>';
-}
-function copySQL(){navigator.clipboard.writeText(document.getElementById('sqlText').value).then(()=>alert('SQL copiado!'));}
-
-// ─── PANELS ───────────────────────────────────────────────────────────
-function showPanel(id,btn){
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('panel-'+id).classList.add('active');
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  if(id==='ganancias') renderGanancias();
-  if(id==='backup') updateBackupPanel();
-  if(id==='clientes-mobile') renderClientList();
-}
-
-function showAddClientDialog(){
-  document.getElementById('newClientName').value='';
-  document.getElementById('addClientError').style.display='none';
-  document.getElementById('addClientModal').style.display='flex';
-  setTimeout(()=>document.getElementById('newClientName').focus(),100);
-}
-
-function closeAddClientModal(){
-  document.getElementById('addClientModal').style.display='none';
-}
-
-async function confirmAddClient(){
-  const name = document.getElementById('newClientName').value.trim();
-  const errEl = document.getElementById('addClientError');
-  if(!name){errEl.textContent='Escribí un nombre';errEl.style.display='block';return;}
-  const exists = clientsCache.find(c=>c.name.toLowerCase()===name.toLowerCase());
-  if(exists){errEl.textContent=`"${name}" ya existe`;errEl.style.display='block';return;}
-  closeAddClientModal();
-  await upsertClient(name);
-  renderClientList();
-}
-
-// ─── UTILS ────────────────────────────────────────────────────────────
-function fmt(n){return Number(n).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function nowTime(){return new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});}
-function fmtDate(d){return new Date(d).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});}
-
-// ─── BOOT ─────────────────────────────────────────────────────────────
-window.addEventListener('load',()=>{
-  initSupabase();
-  document.getElementById('apiKeyInput').value=getApiKey();
-  document.getElementById('sbUrl').value=getSupabaseUrl();
-  document.getElementById('sbKey').value=getSupabaseKey();
-
-  if(!getSupabaseUrl()||!getSupabaseKey()){showAppSetup();return;}
-
-  sbClient.auth.getSession().then(({data})=>{
-    if(data.session){
-      currentUser=data.session.user;
-      loginSuccess(currentUser.email);
+// ── BACKUP ────────────────────────────────────────────────────────────
+async function exportBackup() {
+  try {
+    let allMovs = [];
+    if (db && user) {
+      const { data } = await db.from('movements').select('*').eq('user_id', user.id).order('created_at');
+      allMovs = data || [];
     }
-    // sin sesión → queda en pantalla de login
+    const backup = { version: '2.0', exported_at: new Date().toISOString(), user_email: user?.email||'local', clients, movements: allMovs, ganancias };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const d = new Date().toLocaleDateString('es-AR').replace(/\//g,'-');
+    a.download = `cobranzas_respaldo_${d}.json`;
+    a.click();
+    LS.s('cbr_last_backup', new Date().toISOString());
+    const h = JSON.parse(localStorage.getItem('cbr_backup_hist')||'[]');
+    h.unshift({ date: new Date().toISOString(), file: a.download });
+    if (h.length > 10) h.pop();
+    localStorage.setItem('cbr_backup_hist', JSON.stringify(h));
+    document.getElementById('expStatus').textContent = '✓ Respaldo descargado: ' + a.download;
+    renderBackupHist();
+  } catch(e) { document.getElementById('expStatus').textContent = 'Error: ' + e.message; }
+}
+
+async function importBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('impStatus');
+  statusEl.textContent = '⏳ Leyendo...';
+  try {
+    const data = JSON.parse(await file.text());
+    if (!data.clients || !data.movements) { statusEl.textContent = '❌ Archivo inválido'; return; }
+    if (!confirm(`¿Restaurar respaldo del ${fmtDate(data.exported_at)}?\nClientes: ${data.clients.length}, Movimientos: ${data.movements.length}\n\n⚠️ Esto reemplaza todos los datos actuales.`)) { statusEl.textContent = 'Cancelado'; return; }
+    if (!db || !user) { statusEl.textContent = '❌ Conectate a Supabase primero'; return; }
+    await db.from('movements').delete().eq('user_id', user.id);
+    await db.from('ganancias').delete().eq('user_id', user.id);
+    await db.from('clients').delete().eq('user_id', user.id);
+    if (data.clients.length) await db.from('clients').insert(data.clients.map(c => ({...c, user_id: user.id})));
+    if (data.movements.length) await db.from('movements').insert(data.movements.map(m => ({...m, user_id: user.id, currency: m.currency||'USD'})));
+    if (data.ganancias?.length) await db.from('ganancias').insert(data.ganancias.map(g => ({...g, user_id: user.id, currency: g.currency||'USD'})));
+    await loadData();
+    statusEl.textContent = '✅ Importación completada';
+  } catch(e) { statusEl.textContent = '❌ Error: ' + e.message; }
+  event.target.value = '';
+}
+
+function renderBackupHist() {
+  const h = JSON.parse(localStorage.getItem('cbr_backup_hist')||'[]');
+  const el = document.getElementById('backupHist');
+  if (!h.length) { el.textContent = 'Sin respaldos registrados'; return; }
+  el.innerHTML = h.map(item => `<div style="padding:4px 0;border-bottom:1px solid var(--b1);display:flex;justify-content:space-between;"><span>${item.file}</span><span style="color:var(--t3);">${fmtDate(item.date)}</span></div>`).join('');
+}
+
+// ── CONFIG ────────────────────────────────────────────────────────────
+function loadConfigInputs() {
+  document.getElementById('apiKeyIn').value = getApiKey();
+  document.getElementById('sbUrlIn').value = getSbUrl();
+  document.getElementById('sbKeyIn').value = getSbKey();
+}
+
+function saveApiKey() {
+  const k = document.getElementById('apiKeyIn').value.trim();
+  LS.s('cbr_api', k);
+  updateApiWarn();
+  document.getElementById('apiKeyStatus').innerHTML = k ? '<span class="badge-ok">✓ API key guardada</span>' : '<span class="badge-err">✗ Vacía</span>';
+}
+
+function saveSupabase() {
+  const url = document.getElementById('sbUrlIn').value.trim();
+  const key = document.getElementById('sbKeyIn').value.trim();
+  LS.s('cbr_url', url); LS.s('cbr_key', key);
+  const ok = initDb();
+  document.getElementById('sbStatus').innerHTML = ok ? '<span class="badge-ok">✓ Conectado</span>' : '<span class="badge-err">✗ Error</span>';
+}
+
+function copySql() {
+  navigator.clipboard.writeText(document.querySelector('.sql-box').value).then(() => alert('SQL copiado!'));
+}
+
+// ── PANELS ────────────────────────────────────────────────────────────
+function showPanel(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+  document.getElementById('panel-' + id).classList.add('on');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  if (id === 'ganancias') renderGanancias();
+  if (id === 'backup') renderBackupHist();
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────
+function closeModal(id) { document.getElementById(id).classList.remove('on'); }
+
+// ── UTILS ─────────────────────────────────────────────────────────────
+function fmt(n) { return Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function nowTime() { return new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }); }
+function fmtDate(d) { return new Date(d).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); }
+
+// ── BOOT ──────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  initDb();
+  loadConfigInputs();
+  updateApiWarn();
+
+  if (!getSbUrl() || !getSbKey()) { enterSetupMode(); return; }
+
+  db.auth.getSession().then(({ data }) => {
+    if (data.session) {
+      user = data.session.user;
+      onLogin(user.email);
+    }
   });
 });
 </script>
-<script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
-  });
-}
-</script>
-<div id="addClientModal" style="display:none;" class="modal-overlay" onclick="if(event.target===this)closeAddClientModal()">
-  <div class="modal-box">
-    <h3>➕ Nuevo cliente</h3>
-    <input type="text" id="newClientName" placeholder="Nombre del cliente" onkeydown="if(event.key==='Enter')confirmAddClient()" />
-    <div id="addClientError" style="font-size:12px;color:var(--red);display:none;"></div>
-    <div class="modal-btns">
-      <button class="modal-cancel" onclick="closeAddClientModal()">Cancelar</button>
-      <button class="modal-confirm" onclick="confirmAddClient()">Agregar</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>
