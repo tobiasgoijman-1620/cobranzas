@@ -231,7 +231,9 @@ input:focus, textarea:focus { border-color: var(--acc); }
     </div>
     <div class="sb-nav">
       <button class="nav-btn on" data-p="chat" onclick="showPanel('chat',this)"><span class="nav-icon">💬</span> Chat IA</button>
+      <button class="nav-btn" data-p="resumen" onclick="showPanel('resumen',this)"><span class="nav-icon">📊</span> Resumen</button>
       <button class="nav-btn" data-p="clientes" onclick="showPanel('clientes',this)"><span class="nav-icon">👥</span> Clientes</button>
+      <button class="nav-btn" data-p="resumen" onclick="showPanel('resumen',this)"><span class="nav-icon">👁</span> Resumen</button>
       <button class="nav-btn" data-p="ganancias" onclick="showPanel('ganancias',this)"><span class="nav-icon">📈</span> Ganancias</button>
       <button class="nav-btn" data-p="backup" onclick="showPanel('backup',this)"><span class="nav-icon">🛡️</span> Respaldos</button>
       <button class="nav-btn" data-p="config" onclick="showPanel('config',this)"><span class="nav-icon">⚙️</span> Config</button>
@@ -285,6 +287,27 @@ input:focus, textarea:focus { border-color: var(--acc); }
         </div>
       </div>
       <div class="client-body" id="clientBody"></div>
+    </div>
+
+    <!-- RESUMEN GLOBAL -->
+    <div class="panel" id="panel-resumen">
+      <div class="ph"><div class="ph-info"><div class="ph-title">Resumen global</div><div class="ph-sub" id="resumenSub">Vista rápida de todos los saldos</div></div>
+        <button class="btn" onclick="renderResumen()">↺ Actualizar</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px;" id="resumenBody">
+        <div style="color:var(--t3);font-size:12px;padding:20px 0;">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- RESUMEN -->
+    <div class="panel" id="panel-resumen">
+      <div class="ph">
+        <div class="ph-info"><div class="ph-title">Resumen general</div><div class="ph-sub" id="resumenSub">Todos los saldos de un vistazo</div></div>
+        <button class="btn" onclick="loadResumen()">↻ Actualizar</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px;" id="resumenBody">
+        <div style="color:var(--t3);font-size:12px;text-align:center;padding:40px;">Tocá Actualizar para cargar los saldos</div>
+      </div>
     </div>
 
     <!-- GANANCIAS -->
@@ -1103,15 +1126,177 @@ function showPanel(id, btn) {
   if (btn) btn.classList.add('on');
   if (id === 'ganancias') renderGanancias();
   if (id === 'backup') renderBackupHist();
+  if (id === 'resumen') loadResumen();
+  if (id === 'resumen') renderResumen();
 }
 
 // ── MODAL ─────────────────────────────────────────────────────────────
 function closeModal(id) { document.getElementById(id).classList.remove('on'); }
 
+// ── RESUMEN GLOBAL ───────────────────────────────────────────────────
+async function renderResumen() {
+  const el = document.getElementById('resumenBody');
+  const sub = document.getElementById('resumenSub');
+  if (!clients.length) {
+    el.innerHTML = '<div style="color:var(--t3);font-size:12px;padding:20px 0;">Sin clientes aún. Agregá clientes desde la solapa Clientes.</div>';
+    return;
+  }
+  el.innerHTML = '<div style="color:var(--t3);font-size:12px;padding:20px 0;">Cargando saldos...</div>';
+
+  // Load all movements for all clients in parallel
+  const allMovs = await Promise.all(clients.map(c => getMovements(c.id)));
+
+  // Build summary
+  let teDebenCount = 0, leDebésCount = 0, alDiaCount = 0;
+  const globalTotals = {}; // totals across all clients per currency
+
+  const rows = clients.map((c, i) => {
+    const movs = allMovs[i];
+    const balances = calcBalances(movs);
+    const currencies = Object.keys(balances);
+
+    if (!currencies.length) { alDiaCount++; }
+
+    let hasDebt = false, hasOwe = false;
+    currencies.forEach(cur => {
+      const b = balances[cur];
+      if (b > 0) { hasDebt = true; if (!globalTotals[cur]) globalTotals[cur] = {teDeben:0,leDebés:0}; globalTotals[cur].teDeben += b; }
+      else if (b < 0) { hasOwe = true; if (!globalTotals[cur]) globalTotals[cur] = {teDeben:0,leDebés:0}; globalTotals[cur].leDebés += Math.abs(b); }
+    });
+    if (hasDebt) teDebenCount++;
+    else if (hasOwe) leDebésCount++;
+    else alDiaCount++;
+
+    if (!currencies.length) {
+      return `<div style="background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="openClient('${c.id}')">
+        <div style="font-size:14px;font-weight:500;">${c.name}</div>
+        <div style="font-size:11px;color:var(--t3);font-family:var(--mono);">Al día ✓</div>
+      </div>`;
+    }
+
+    const balHtml = currencies.map(cur => {
+      const b = balances[cur];
+      const label = b > 0 ? `te debe` : `le debés`;
+      const sign = b > 0 ? '+' : '-';
+      return `<div style="text-align:right;">
+        <div style="font-size:10px;color:var(--t3);font-family:var(--mono);">${cur}</div>
+        <div style="font-size:15px;font-weight:600;font-family:var(--mono);">${sign}${fmt(Math.abs(b))}</div>
+        <div style="font-size:10px;color:var(--t2);">${label}</div>
+      </div>`;
+    }).join('');
+
+    return `<div style="background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;cursor:pointer;" onclick="openClient('${c.id}')">
+      <div style="font-size:14px;font-weight:500;padding-top:2px;">${c.name}</div>
+      <div style="display:flex;gap:14px;">${balHtml}</div>
+    </div>`;
+  }).join('');
+
+  // Global totals summary
+  const totalCurrencies = Object.keys(globalTotals);
+  const totalsHtml = totalCurrencies.length ? `
+    <div style="background:var(--s2);border:1px solid var(--b2);border-radius:10px;padding:14px 16px;">
+      <div style="font-size:10px;color:var(--t3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;">Total general</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;">
+        ${totalCurrencies.map(cur => {
+          const t = globalTotals[cur];
+          return `<div style="flex:1;min-width:120px;">
+            <div style="font-size:10px;color:var(--t3);font-family:var(--mono);margin-bottom:4px;">${cur}</div>
+            ${t.teDeben > 0 ? `<div style="font-size:12px;color:var(--t1);">Te deben: <b>${fmt(t.teDeben)}</b></div>` : ''}
+            ${t.leDebés > 0 ? `<div style="font-size:12px;color:var(--t1);">Les debés: <b>${fmt(t.leDebés)}</b></div>` : ''}
+            <div style="font-size:11px;color:var(--t3);margin-top:2px;">Neto: ${fmt(t.teDeben - t.leDebés)}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  // Status bar
+  const statusHtml = `<div style="display:flex;gap:8px;flex-wrap:wrap;">
+    ${teDebenCount ? `<div style="padding:5px 12px;background:var(--s2);border-radius:20px;font-size:12px;color:var(--t2);">📋 Te deben: <b style="color:var(--t1);">${teDebenCount}</b></div>` : ''}
+    ${leDebésCount ? `<div style="padding:5px 12px;background:var(--s2);border-radius:20px;font-size:12px;color:var(--t2);">💸 Les debés: <b style="color:var(--t1);">${leDebésCount}</b></div>` : ''}
+    ${alDiaCount ? `<div style="padding:5px 12px;background:var(--s2);border-radius:20px;font-size:12px;color:var(--t2);">✓ Al día: <b style="color:var(--t1);">${alDiaCount}</b></div>` : ''}
+  </div>`;
+
+  sub.textContent = `${clients.length} cliente${clients.length!==1?'s':''} · tocá uno para ver el detalle`;
+  el.innerHTML = statusHtml + totalsHtml + rows;
+}
+
 // ── UTILS ─────────────────────────────────────────────────────────────
 function fmt(n) { return Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function nowTime() { return new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }); }
 function fmtDate(d) { return new Date(d).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); }
+
+// ── RESUMEN ──────────────────────────────────────────────────────────
+async function loadResumen() {
+  const body = document.getElementById('resumenBody');
+  const sub = document.getElementById('resumenSub');
+  body.innerHTML = '<div style="color:var(--t3);font-size:12px;text-align:center;padding:40px;">⏳ Cargando saldos...</div>';
+
+  if (!clients.length) {
+    body.innerHTML = '<div style="color:var(--t3);font-size:12px;text-align:center;padding:40px;">Sin clientes aún.</div>';
+    return;
+  }
+
+  // Load all movements for all clients in parallel
+  const allMovs = await Promise.all(clients.map(c => getMovements(c.id)));
+
+  // Build summary per client
+  const summaries = clients.map((c, i) => {
+    const movs = allMovs[i];
+    const balances = calcBalances(movs);
+    const currencies = Object.keys(balances);
+
+    if (!currencies.length) {
+      return { client: c, balances: {}, hasData: false };
+    }
+    return { client: c, balances, hasData: true };
+  });
+
+  // Separate: te deben, le debés, al día
+  const teDeben = summaries.filter(s => s.hasData && Object.values(s.balances).some(b => b > 0));
+  const leDebés = summaries.filter(s => s.hasData && Object.values(s.balances).every(b => b <= 0) && Object.values(s.balances).some(b => b < 0));
+  const alDia = summaries.filter(s => !s.hasData || Object.values(s.balances).every(b => b === 0));
+
+  sub.textContent = `${clients.length} clientes — actualizado ${nowTime()}`;
+
+  function renderClientCard(s) {
+    const currencies = Object.entries(s.balances);
+    const balHtml = currencies.map(([cur, bal]) => {
+      const label = bal > 0 ? 'te debe' : bal < 0 ? 'le debés' : 'al día';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--b1);">
+        <span style="font-size:10px;color:var(--t3);font-family:var(--mono);">${cur}</span>
+        <span style="font-size:13px;font-weight:600;font-family:var(--mono);">${fmt(Math.abs(bal))}</span>
+        <span style="font-size:10px;color:var(--t2);">${label}</span>
+      </div>`;
+    }).join('');
+
+    return `<div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:14px;cursor:pointer;" onclick="openClient('${s.client.id}')">
+      <div style="font-size:14px;font-weight:600;margin-bottom:8px;">${s.client.name}</div>
+      ${balHtml || '<div style="font-size:12px;color:var(--t3);">Sin movimientos</div>'}
+    </div>`;
+  }
+
+  let html = '';
+
+  if (teDeben.length) {
+    html += `<div style="font-size:10px;color:var(--t3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;padding:4px 0;">Te deben (${teDeben.length})</div>`;
+    html += teDeben.map(renderClientCard).join('');
+  }
+
+  if (leDebés.length) {
+    html += `<div style="font-size:10px;color:var(--t3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;padding:12px 0 4px;">Les debés (${leDebés.length})</div>`;
+    html += leDebés.map(renderClientCard).join('');
+  }
+
+  if (alDia.length) {
+    html += `<div style="font-size:10px;color:var(--t3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;padding:12px 0 4px;">Al día (${alDia.length})</div>`;
+    html += alDia.map(s => `<div style="background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:12px 14px;display:flex;justify-content:space-between;cursor:pointer;" onclick="openClient('${s.client.id}')">
+      <span style="font-size:13px;font-weight:500;">${s.client.name}</span>
+      <span style="font-size:11px;color:var(--t3);">Al día ✓</span>
+    </div>`).join('');
+  }
+
+  body.innerHTML = html || '<div style="color:var(--t3);font-size:12px;text-align:center;padding:40px;">Sin datos</div>';
+}
 
 // ── BOOT ──────────────────────────────────────────────────────────────
 window.addEventListener('load', () => {
